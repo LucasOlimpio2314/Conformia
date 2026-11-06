@@ -1,0 +1,11 @@
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Segredos
+.env
+
+# Sistema
+Thumbs.db
+.DS_Store
