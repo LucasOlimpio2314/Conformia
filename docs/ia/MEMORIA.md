@@ -38,6 +38,7 @@
 | 2026-11-05 | Flyway para o schema | Banco igual na máquina de todo o grupo |
 | 2026-11-05 | Migrations numeradas em sequência (`V1`, `V2`...), independentes da versão do sistema (`pom.xml`, semver + tag no Git) | Grupo cria migrations em paralelo sem disputar número de versão |
 | 2026-11-05 | Usuário inicial criado em Java na inicialização, senha do `.env` | Não versionar senha padrão no repositório |
+| 2026-11-05 | Testes no padrão AAA + nome de método por comportamento + AssertJ | Mais simples para o grupo aprender; o nome já dá a leitura de negócio. Migrar para Given-When-Then só se os testes virarem documentação para não-devs |
 | 2026-11-05 | Repositório privado, sem licença por enquanto | Evitar exposição acidental; possível venda futura |
 
 ## Pendências

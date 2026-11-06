@@ -83,6 +83,19 @@ Criar pastas de um módulo só quando o módulo for implementado.
 
 - Local: `server/src/test/java/...` espelhando o pacote da classe testada.
 - Nome do método descreve o comportamento: `deveBloquearAceiteQuandoUsuarioNaoForGerente()`.
+- **Padrão AAA** em todo teste, com os comentários marcando as fases:
+
+```java
+@Test
+void deveImpedirAnalistaDeAceitarRisco() {
+    // Arrange — prepara dados e mocks
+    // Act     — executa UMA ação
+    // Assert  — verifica o resultado
+}
+```
+
+- Um comportamento por teste (um único Act). Vários cenários = vários métodos `@Test`.
+- Asserções com **AssertJ** (`assertThat(...)`), não `assertEquals`.
 - **Depois de cada implementação:** criar o teste dela e rodar `mvnw verify` (regressão completa) antes de commitar.
 
 ## 8. Git
