@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Fragmento carregado no drawer. Em caso de erro de validação o servidor
+     devolve este mesmo fragmento (status 422) já com as mensagens. -->
+<form th:fragment="drawer" th:action="@{/usuarios}" th:object="${form}" method="post" novalidate data-form-usuario>
+    <div class="d-head">
+        <div><h2>Novo usuário</h2><p>O acesso fica disponível assim que salvar.</p></div>
+        <button class="x" type="button" data-drawer-fechar aria-label="Fechar">×</button>
+    </div>
+
+    <div class="d-body">
+        <div class="alert alert-err" role="alert" th:if="${#fields.hasGlobalErrors()}"
+             th:text="${#strings.listJoin(#fields.globalErrors(), ' ')}"></div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('nome')} ? 'invalid'">
+            <label for="nome">Nome completo</label>
+            <input class="input" th:field="*{nome}" autocomplete="off" placeholder="Ex.: Mariana Costa">
+            <span class="err" th:if="${#fields.hasErrors('nome')}" th:text="${#fields.errors('nome')[0]}"></span>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('email')} ? 'invalid'">
+            <label for="email">E-mail</label>
+            <input class="input" th:field="*{email}" type="email" autocomplete="off" placeholder="nome@empresa.com.br">
+            <span class="err" th:if="${#fields.hasErrors('email')}" th:text="${#fields.errors('email')[0]}"></span>
+            <span class="hint">Usado como login. Não pode repetir.</span>
+        </div>
+
+        <fieldset class="field roles">
+            <legend class="label" style="margin-bottom:6px">Perfil</legend>
+            <label class="role" th:each="p : ${perfis}">
+                <input type="radio" th:field="*{perfil}" th:value="${p}">
+                <b th:text="${p.rotulo}">Analista</b><span th:text="${p.descricao}"></span>
+            </label>
+            <span class="err" th:if="${#fields.hasErrors('perfil')}" th:text="${#fields.errors('perfil')[0]}"></span>
+        </fieldset>
+
+        <div class="info">
+            <b>Senha temporária gerada pelo sistema</b>
+            Ao salvar, o Conformia cria uma senha temporária e mostra ela uma única vez.
+            No primeiro acesso, o usuário é obrigado a trocá-la.
+        </div>
+
+        <div class="switch-row">
+            <div><b>Acesso ativo</b><span>Desative para bloquear o login sem apagar o histórico.</span></div>
+            <label class="switch"><input type="checkbox" th:field="*{ativo}" aria-label="Acesso ativo"><i></i></label>
+        </div>
+    </div>
+
+    <div class="d-foot">
+        <button class="btn btn-ghost" type="button" data-drawer-fechar>Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar usuário</button>
+    </div>
+</form>
+</body>
+</html>

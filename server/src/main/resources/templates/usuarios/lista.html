@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Usuários')}"></head>
+<body>
+<div class="app">
+    <aside th:replace="~{fragments/layout :: sidebar('usuarios')}"></aside>
+
+    <main class="main" th:with="eu=${#authentication.principal}">
+        <div class="crumbs">Administração / Usuários</div>
+        <div class="page-head">
+            <div>
+                <h1>Usuários</h1>
+                <p>Quem acessa o Riskdesk e com qual perfil. <span class="ctrl-ref">· A.5.18 Direitos de acesso</span></p>
+            </div>
+            <button class="btn btn-primary" type="button" data-drawer-url="/usuarios/novo/form"
+                    th:attr="data-drawer-url=@{/usuarios/novo/form}">+ Novo usuário</button>
+        </div>
+
+        <div class="summary" role="group" aria-label="Filtrar por perfil">
+            <button type="button" class="chip" data-perfil="" aria-pressed="true">Todos <b th:text="${#lists.size(usuarios)}">0</b></button>
+            <button type="button" class="chip" data-perfil="GERENTE" aria-pressed="false">Gerentes <b th:text="${contagem['GERENTE']}">0</b></button>
+            <button type="button" class="chip" data-perfil="ANALISTA" aria-pressed="false">Analistas <b th:text="${contagem['ANALISTA']}">0</b></button>
+            <button type="button" class="chip" data-perfil="AUDITOR" aria-pressed="false">Auditores <b th:text="${contagem['AUDITOR']}">0</b></button>
+        </div>
+
+        <section class="panel">
+            <div class="toolbar">
+                <label class="search">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.25" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input class="input" id="busca" type="search" placeholder="Buscar por nome ou e-mail" aria-label="Buscar usuário">
+                </label>
+                <select class="select" id="filtro-situacao" aria-label="Filtrar por situação">
+                    <option value="">Todas as situações</option>
+                    <option value="ativo">Ativos</option>
+                    <option value="inativo">Inativos</option>
+                </select>
+            </div>
+            <div class="table-wrap">
+                <table id="tabela-usuarios">
+                    <thead>
+                    <tr><th>Usuário</th><th>Perfil</th><th>Situação</th><th>Último acesso</th><th>Criado em</th><th><span class="sr-only">Ações</span></th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="u : ${usuarios}"
+                        th:attr="data-perfil=${u.perfil()},data-ativo=${u.ativo()},data-busca=${#strings.toLowerCase(u.nome() + ' ' + u.email())}"
+                        th:classappend="${u.id() == novoId} ? 'new'">
+                        <td>
+                            <div class="user">
+                                <span class="avatar" th:text="${u.iniciais()}">MC</span>
+                                <div>
+                                    <b><span th:text="${u.nome()}">Mariana Costa</span><span class="voce" th:if="${u.id() == eu.id}">você</span></b>
+                                    <span th:text="${u.email()}">mariana@empresa.com.br</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="badge" th:classappend="'b-' + ${u.perfil()}" th:text="${u.perfil()}">ANALISTA</span></td>
+                        <td><span class="status" th:classappend="'s-' + ${u.situacao().css}" th:text="${u.situacao().rotulo}">Ativo</span></td>
+                        <td class="mono" th:text="${u.ultimoAcesso() != null} ? ${#temporals.format(u.ultimoAcesso(), 'dd/MM/yyyy HH:mm')} : '—'">—</td>
+                        <td class="mono" th:text="${#temporals.format(u.criadoEm(), 'dd/MM/yyyy')}">06/11/2026</td>
+                        <td>
+                            <div class="row-acts" th:if="${u.id() != eu.id}">
+                                <button class="row-act" type="button"
+                                        th:attr="data-reset-url=@{/usuarios/{id}/redefinir-senha(id=${u.id()})},data-reset-nome=${u.nome()}">Redefinir senha</button>
+                            </div>
+                            <div class="row-acts" th:if="${u.id() == eu.id}">
+                                <a class="row-act" th:href="@{/minha-conta}" style="text-decoration:none">Minha conta</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr id="sem-resultado" hidden><td colspan="6" class="empty">Nenhum usuário encontrado com esses filtros.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="foot"><span id="contador" th:text="${#lists.size(usuarios)} + ' usuários'"></span><span>Ordenado por nome</span></div>
+        </section>
+    </main>
+</div>
+
+<!-- Drawer: o conteúdo vem de /usuarios/novo/form (fragmento) via fetch -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Novo usuário" aria-hidden="true"></aside>
+
+<!-- Modal: confirmação de redefinir senha + exibição da senha temporária -->
+<div class="modal-scrim" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+        <div id="modal-confirmar">
+            <h3 id="modal-titulo">Redefinir senha de <span id="modal-nome"></span>?</h3>
+            <p>Uma nova senha temporária será gerada. A senha atual para de funcionar na hora e a pessoa terá que criar uma nova no próximo acesso.</p>
+            <div class="m-actions">
+                <button class="btn btn-ghost" type="button" data-modal-fechar>Cancelar</button>
+                <button class="btn btn-primary" type="button" id="modal-gerar">Gerar senha temporária</button>
+            </div>
+        </div>
+        <div id="modal-resultado" hidden></div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toast}"></div>
+</body>
+</html>

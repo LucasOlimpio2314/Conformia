@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<!-- Página de erro padrão do Spring Boot (404, 403, 500...) -->
+<head th:replace="~{fragments/layout :: head('Erro')}"></head>
+<body>
+<main class="centro" th:with="codigo=${status}">
+    <div class="card">
+        <div class="logo"><span class="logo-mark">C</span> Conformia</div>
+        <span class="pill-warn" th:text="'Erro ' + ${codigo}">Erro 404</span>
+        <h2 th:switch="${codigo}">
+            <span th:case="403">Você não tem acesso a esta página</span>
+            <span th:case="404">Página não encontrada</span>
+            <span th:case="*">Algo deu errado</span>
+        </h2>
+        <p class="sub" th:switch="${codigo}">
+            <span th:case="403">Seu perfil não permite esta ação. Se precisar do acesso, fale com um Gerente.</span>
+            <span th:case="404">Confira o endereço digitado.</span>
+            <span th:case="*">Tente de novo em instantes. Se continuar, avise o responsável pelo sistema.</span>
+        </p>
+        <div><a class="btn btn-primary" th:href="@{/}">Voltar ao início</a></div>
+    </div>
+</main>
+</body>
+</html>

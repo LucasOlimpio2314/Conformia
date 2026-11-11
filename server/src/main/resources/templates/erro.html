@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Não foi possível concluir')}"></head>
+<body>
+<main class="centro">
+    <div class="card">
+        <div class="logo"><span class="logo-mark">C</span> Conformia</div>
+        <h2>Não foi possível concluir</h2>
+        <p class="sub" th:text="${mensagem}">Mensagem do erro.</p>
+        <div><a class="btn btn-primary" th:href="@{/}">Voltar ao início</a></div>
+    </div>
+</main>
+</body>
+</html>

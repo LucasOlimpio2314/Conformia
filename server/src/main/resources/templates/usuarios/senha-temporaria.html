@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Única vez em que a senha temporária aparece. O banco guarda só o hash. -->
+<div th:fragment="conteudo" data-senha-gerada th:attr="data-recarregar-url=@{/usuarios(novo=${gerada.usuarioId()})}">
+    <h3>Senha temporária de <span th:text="${gerada.nomeUsuario()}">Juliana</span></h3>
+    <div class="temp-box">
+        <code th:text="${gerada.senha()}">Kq7mV2pXw9</code>
+        <button class="btn btn-ghost" type="button" data-copiar>Copiar</button>
+    </div>
+    <ul class="m-list">
+        <li>Ela aparece <b>só agora</b>: o sistema guarda apenas o hash.</li>
+        <li>Entregue por um canal seguro (pessoalmente, mensagem direta).</li>
+        <li>Vale por <b>24 horas</b> e precisa ser trocada no primeiro login.</li>
+    </ul>
+    <div class="m-actions"><button class="btn btn-primary" type="button" data-recarregar>Entendi, já anotei</button></div>
+</div>
+</body>
+</html>

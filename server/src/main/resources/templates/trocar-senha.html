@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Crie sua senha')}"></head>
+<body>
+<main class="centro">
+    <form class="card" th:action="@{/trocar-senha}" method="post" data-regras-senha>
+        <div class="logo"><span class="logo-mark">C</span> Conformia</div>
+        <div>
+            <span class="pill-warn">Senha temporária</span>
+            <h2>Crie sua senha pessoal</h2>
+            <p class="sub">Olá, <b th:text="${primeiroNome}">Juliana</b>. Você entrou com uma senha temporária.
+                Para continuar, defina uma senha que só você conheça.</p>
+        </div>
+
+        <div class="alert alert-err" role="alert" th:if="${erro}" th:text="${erro}"></div>
+
+        <div class="field" th:classappend="${campoErro == 'novaSenha'} ? 'invalid'">
+            <label for="novaSenha">Nova senha</label>
+            <div class="pwd">
+                <input class="input" id="novaSenha" name="novaSenha" type="password" autocomplete="new-password" required autofocus>
+                <button type="button" data-toggle="novaSenha">Mostrar</button>
+            </div>
+        </div>
+        <div class="field" th:classappend="${campoErro == 'confirmacao'} ? 'invalid'">
+            <label for="confirmacao">Confirme a nova senha</label>
+            <div class="pwd">
+                <input class="input" id="confirmacao" name="confirmacao" type="password" autocomplete="new-password" required>
+                <button type="button" data-toggle="confirmacao">Mostrar</button>
+            </div>
+        </div>
+
+        <ul th:replace="~{minha-conta :: regras}"></ul>
+
+        <button class="btn btn-primary" type="submit">Salvar e continuar</button>
+        <p class="note">Enquanto a senha não for trocada, nenhuma outra tela fica disponível.</p>
+    </form>
+    <form th:action="@{/logout}" method="post" style="margin-top:12px">
+        <button type="submit" class="link">Sair</button>
+    </form>
+</main>
+</body>
+</html>
