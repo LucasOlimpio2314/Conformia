@@ -28,13 +28,26 @@
            th:attr="aria-current=${ativo == 'inventario'} ? 'page'">Inventário de ativos</a>
         <a th:href="@{/riscos}" th:classappend="${ativo == 'riscos'} ? 'active'"
            th:attr="aria-current=${ativo == 'riscos'} ? 'page'">Riscos</a>
-        <a href="#" class="soon" aria-disabled="true">Aceites formais <small>em breve</small></a>
-        <a href="#" class="soon" aria-disabled="true">Plano de ação <small>em breve</small></a>
-        <a href="#" class="soon" aria-disabled="true">Controles do Anexo A <small>em breve</small></a>
+        <!-- contadores: bean "menu" (MenuContadores) chamado direto do template -->
+        <a th:href="@{/plano}" th:classappend="${ativo == 'plano'} ? 'active'"
+           th:attr="aria-current=${ativo == 'plano'} ? 'page'" th:with="atrasadas=${@menu.acoesAtrasadas()}">
+            Plano de ação
+            <span class="count warn" th:if="${atrasadas > 0}" th:text="${atrasadas}" title="Ações atrasadas">2</span>
+        </a>
+        <a th:href="@{/aceites}" th:classappend="${ativo == 'aceites'} ? 'active'"
+           th:attr="aria-current=${ativo == 'aceites'} ? 'page'" th:with="pendentes=${@menu.aceitesPendentes()}">
+            Aceites formais
+            <span class="count" th:if="${pendentes > 0}" th:text="${pendentes}" title="Aguardando aceite">1</span>
+        </a>
     </nav>
 
     <nav class="nav" aria-label="Administração" sec:authorize="hasRole('GERENTE')">
         <div class="nav-label">Administração</div>
+        <a th:href="@{/avisos}" th:classappend="${ativo == 'avisos'} ? 'active'"
+           th:attr="aria-current=${ativo == 'avisos'} ? 'page'" th:with="naoLidos=${@menu.avisosNaoLidos(eu.id)}">
+            Avisos
+            <span class="count" th:if="${naoLidos > 0}" th:text="${naoLidos}" title="Avisos não lidos">3</span>
+        </a>
         <a th:href="@{/usuarios}" th:classappend="${ativo == 'usuarios'} ? 'active'"
            th:attr="aria-current=${ativo == 'usuarios'} ? 'page'">Usuários</a>
     </nav>

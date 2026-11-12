@@ -33,7 +33,10 @@ public record RiscoResumo(
         String justificativaEncerramento,
         Instant encerradoEm,
         Instant atualizadoEm,
-        String atualizadoPorNome
+        String atualizadoPorNome,
+        /** Residual esperado do plano de ação (null = não definido). */
+        Integer probabilidadeResidual,
+        Integer impactoResidual
 ) {
 
     public static RiscoResumo de(Risco r) {
@@ -48,7 +51,8 @@ public record RiscoResumo(
                 r.getDono().getId(), r.getDono().getNome(), r.getDono().isAtivo(),
                 r.getProbabilidade(), r.getImpacto(), r.getValor(), r.getNivel(), r.getTratamento(),
                 r.getSituacao(), r.getJustificativaEncerramento(), r.getEncerradoEm(),
-                r.getAtualizadoEm(), r.getAtualizadoPor().getNome());
+                r.getAtualizadoEm(), r.getAtualizadoPor().getNome(),
+                r.getProbabilidadeResidual(), r.getImpactoResidual());
     }
 
     public boolean ativo() {

@@ -1,5 +1,6 @@
 package io.github.lucasolimpio.conformia.risco.service;
 
+import io.github.lucasolimpio.conformia.aceite.service.AceiteService;
 import io.github.lucasolimpio.conformia.controle.domain.ControleAnexoA;
 import io.github.lucasolimpio.conformia.controle.repository.ControleAnexoARepository;
 import io.github.lucasolimpio.conformia.inventario.domain.Ativo;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -63,10 +65,12 @@ public class RiscoService {
     private final ControleAnexoARepository controleRepository;
     private final UsuarioRepository usuarioRepository;
     private final Clock clock;
+    private final AceiteService aceiteService;
 
     public RiscoService(RiscoRepository repository, AtivoRepository ativoRepository, AmeacaRepository ameacaRepository,
                         VulnerabilidadeRepository vulnerabilidadeRepository, ControleAnexoARepository controleRepository,
-                        UsuarioRepository usuarioRepository, Clock clock) {
+                        UsuarioRepository usuarioRepository, Clock clock,
+                        AceiteService aceiteService) {
         this.repository = repository;
         this.ativoRepository = ativoRepository;
         this.ameacaRepository = ameacaRepository;
@@ -74,6 +78,7 @@ public class RiscoService {
         this.controleRepository = controleRepository;
         this.usuarioRepository = usuarioRepository;
         this.clock = clock;
+        this.aceiteService = aceiteService;
     }
 
     @Transactional(readOnly = true)
@@ -139,8 +144,35 @@ public class RiscoService {
         exigirAtivo(risco);
         Set<Long> jaLigados = new HashSet<>();
         risco.getAtivos().forEach(a -> jaLigados.add(a.getId()));
-        risco.atualizar(validar(form, jaLigados), autor, clock.instant());
+        DadosRisco dados = validar(form, jaLigados);
+
+        // o Gerente aceitou um risco específico: se ele mudou, o aceite cai
+        String mudancas = mudancasQueDerrubamAceite(risco, dados, jaLigados);
+        risco.atualizar(dados, autor, clock.instant());
+        if (!mudancas.isEmpty()) {
+            aceiteService.invalidarSeVigente(risco, autor, "Risco alterado (" + mudancas + ")", true);
+        }
         return RiscoResumo.de(risco);
+    }
+
+    /** Ex.: "impacto 2 → 3, ativos". Vazio se nada relevante para o aceite mudou. */
+    private static String mudancasQueDerrubamAceite(Risco antes, DadosRisco depois, Set<Long> ativosAntes) {
+        List<String> mudancas = new ArrayList<>();
+        if (antes.getProbabilidade() != depois.probabilidade()) {
+            mudancas.add("probabilidade " + antes.getProbabilidade() + " → " + depois.probabilidade());
+        }
+        if (antes.getImpacto() != depois.impacto()) {
+            mudancas.add("impacto " + antes.getImpacto() + " → " + depois.impacto());
+        }
+        Set<Long> ativosDepois = new HashSet<>();
+        depois.ativos().forEach(a -> ativosDepois.add(a.getId()));
+        if (!ativosAntes.equals(ativosDepois)) {
+            mudancas.add("ativos");
+        }
+        if (antes.getTratamento() != depois.tratamento()) {
+            mudancas.add("tratamento");
+        }
+        return String.join(", ", mudancas);
     }
 
     public RiscoResumo encerrar(Long id, String justificativa, Long solicitanteId) {
@@ -153,6 +185,7 @@ public class RiscoService {
                     + JUSTIFICATIVA_MINIMO + " e " + JUSTIFICATIVA_MAXIMO + " caracteres).");
         }
         risco.encerrar(texto, autor, clock.instant());
+        aceiteService.invalidarSeVigente(risco, autor, "Risco encerrado", false);
         return RiscoResumo.de(risco);
     }
 

@@ -362,3 +362,84 @@ tr.encerrado td { color: var(--ink-3); }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .seg5 { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ---------- menu: contadores ---------- */
+.count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--indigo); color: #fff; font-size: 11px; font-weight: 600; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
+.count.warn { background: var(--warn); }
+
+/* ---------- riscos: situação do tratamento ---------- */
+.trat-status { display: block; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.trat-status.ok { color: var(--ok); }
+.trat-status.warn { color: var(--warn); }
+
+/* ---------- plano de ação ---------- */
+.kpis-info { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.kpi-info { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.kpi-info span { font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+.kpi-info b { font-size: 28px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.kpi-info.alerta b { color: var(--err); }
+.kpi-info small { font-size: 11.5px; color: var(--ink-3); }
+.planos { display: flex; flex-direction: column; gap: 14px; }
+.plano { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.plano-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--line-2); flex-wrap: wrap; }
+.plano-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.plano-head .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; color: var(--ink-2); }
+.seta { color: var(--ink-3); }
+.nao-definido { color: var(--ink-3); }
+.plano-lado { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.progresso { display: flex; align-items: center; gap: 10px; min-width: 220px; }
+.barra { flex: 1; height: 8px; border-radius: 4px; background: var(--line-2); overflow: hidden; }
+.barra i { display: block; height: 100%; background: var(--ok); border-radius: 4px; }
+.progresso span { font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plano-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.pronto { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 18px; background: var(--ok-bg); color: var(--ok); font-size: 13px; font-weight: 500; flex-wrap: wrap; }
+.aviso-plano { padding: 8px 18px; background: var(--warn-bg); color: var(--warn); font-size: 12.5px; }
+.tabela-acoes { min-width: 820px; }
+.tabela-acoes td { vertical-align: top; }
+.acao b { font-weight: 500; display: block; }
+.acao span:not(.code) { font-size: 12.5px; color: var(--ink-3); display: block; }
+td.atrasada { color: var(--err); font-weight: 500; }
+td.atrasada::after { content: " · atrasada"; font-size: 11.5px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.p-PENDENTE { background: #F1F2F6; color: var(--ink-2); } .p-EM_ANDAMENTO { background: var(--indigo-50); color: var(--indigo); }
+.p-CONCLUIDA { background: var(--ok-bg); color: var(--ok); } .p-CANCELADA { background: #F1F2F6; color: var(--ink-3); }
+.p-VIGENTE { background: var(--ok-bg); color: var(--ok); } .p-VENCIDO { background: var(--warn-bg); color: var(--warn); }
+.p-REVOGADO { background: #F1F2F6; color: var(--ink-3); } .p-INVALIDADO { background: var(--err-bg); color: var(--err); }
+
+/* ---------- aceites ---------- */
+.h2 { margin: 4px 0 0; font-size: 16px; font-weight: 600; }
+.pend { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.card-pend { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.card-pend .tipo { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.card-pend h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.card-pend .linha { font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.card-pend .motivo { font-size: 12.5px; color: var(--err); background: var(--err-bg); padding: 6px 10px; border-radius: 6px; }
+.card-pend .motivo.motivo-warn { color: var(--warn); background: var(--warn-bg); }
+.card-pend .acts { margin-top: auto; display: flex; justify-content: flex-end; }
+.tabela-aceites { min-width: 900px; }
+.tabela-aceites td { vertical-align: top; }
+.resumo { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; font-size: 13px; margin: 0; }
+.resumo dt { color: var(--ink-3); }
+.resumo dd { margin: 0; }
+.declara { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--ground); font-size: 13px; cursor: pointer; font-weight: 400 !important; }
+.declara input { accent-color: var(--indigo); margin-top: 3px; }
+.validade { font-size: 13px; color: var(--ink-2); margin: 0; }
+.validade b { color: var(--ink); }
+.textarea-sm { min-height: 56px; }
+
+/* ---------- avisos ---------- */
+.avisos { display: flex; flex-direction: column; }
+.aviso { display: grid; grid-template-columns: 10px 1fr auto; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line-2); align-items: start; }
+.aviso:last-child { border-bottom: 0; }
+.aviso .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--indigo); margin-top: 7px; }
+.aviso.lido .dot { background: transparent; }
+.aviso b { display: block; font-weight: 600; }
+.aviso.lido b { font-weight: 500; color: var(--ink-2); }
+.aviso span, .aviso small { display: block; font-size: 12.5px; color: var(--ink-3); }
+.aviso form { margin: 0; }
+
+@media (max-width: 860px) {
+  .kpis-info { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plano-lado { align-items: flex-start; }
+}

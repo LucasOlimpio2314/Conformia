@@ -81,6 +81,13 @@ public class Risco {
     @Column(length = 20)
     private OpcaoTratamento tratamento;
 
+    /** Risco residual esperado depois do plano de ação (os dois null = não definido). */
+    @Column(name = "probabilidade_residual")
+    private Integer probabilidadeResidual;
+
+    @Column(name = "impacto_residual")
+    private Integer impactoResidual;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private SituacaoRisco situacao;
@@ -151,6 +158,40 @@ public class Risco {
         this.tratamento = d.tratamento();
         this.atualizadoEm = agora;
         this.atualizadoPor = autor;
+    }
+
+    /**
+     * Como o risco deve ficar depois das ações do plano. Não pode ser pior
+     * que o risco inerente (o plano existe para reduzir).
+     */
+    public void definirResidual(int probabilidade, int impacto, Usuario autor, Instant agora) {
+        if (!isAtivo()) {
+            throw new IllegalStateException("Risco encerrado não pode ser alterado");
+        }
+        if (probabilidade * impacto > getValor()) {
+            throw new IllegalArgumentException("Residual maior que o risco inerente");
+        }
+        this.probabilidadeResidual = probabilidade;
+        this.impactoResidual = impacto;
+        this.atualizadoEm = agora;
+        this.atualizadoPor = autor;
+    }
+
+    public boolean temResidual() {
+        return probabilidadeResidual != null;
+    }
+
+    /** Valor do risco residual esperado, ou null se não definido. */
+    public Integer getValorResidual() {
+        return temResidual() ? probabilidadeResidual * impactoResidual : null;
+    }
+
+    public Integer getProbabilidadeResidual() {
+        return probabilidadeResidual;
+    }
+
+    public Integer getImpactoResidual() {
+        return impactoResidual;
     }
 
     /** Valor do risco inerente na matriz 5x5 (1 a 25). */

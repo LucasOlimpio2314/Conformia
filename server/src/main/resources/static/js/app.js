@@ -93,10 +93,16 @@
     drawer.innerHTML = await resp.text();
     prepararFormAtivo();
     prepararFormRisco();
+    prepararFormsPlanoAceite();
     drawer.classList.add("open");
     scrim.classList.add("open");
     drawer.setAttribute("aria-hidden", "false");
-    setTimeout(() => { const f = $("input:not([type=hidden])", drawer); if (f) f.focus(); }, 200);
+    // foco no primeiro campo de digitação (o seletor combinado devolve o primeiro na ordem da página;
+    // checkbox/radio ficam de fora — no aceite o 1º input é a declaração, e o texto iria "para o nada")
+    setTimeout(() => {
+      const f = $("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, select", drawer);
+      if (f) f.focus();
+    }, 200);
   }
   function fecharDrawer() {
     drawer.classList.remove("open");
@@ -115,6 +121,7 @@
     drawer.addEventListener("click", e => { if (e.target.closest("[data-drawer-fechar]")) fecharDrawer(); });
     drawer.addEventListener("change", prepararFormAtivo);
     drawer.addEventListener("change", () => prepararFormRisco());
+    drawer.addEventListener("change", () => prepararFormsPlanoAceite());
 
     // envio do formulário:
     // 422 = volta o form com erros; X-Redirect = salvou, recarrega; 200 = senha temporária (usuários)
@@ -131,6 +138,7 @@
           drawer.innerHTML = html;
           prepararFormAtivo();
           prepararFormRisco();
+          prepararFormsPlanoAceite();
           const erro = $(".invalid input, .invalid select, .alert", drawer);
           if (erro) erro.focus?.();
           return;
@@ -251,21 +259,74 @@
     filtrar(); // começa mostrando só os riscos ativos
   }
 
-  // ---------- riscos: comportamento do formulário ----------
-  const ROTULO_IMPACTO = { 1: "Insignificante", 2: "Menor", 3: "Moderado", 4: "Maior", 5: "Catastrófico" };
-  function prepararFormRisco() {
-    const form = drawer && $("[data-form-risco]", drawer);
-    if (!form) return;
+  // ---------- nível = P × I (formulário de risco e de residual) ----------
+  // As faixas vêm do servidor (enum NivelRisco, em data-niveis): a regra não é repetida aqui.
+  function atualizarNivel(form) {
+    const resultado = $("[data-resultado]", form);
+    if (!resultado) return;
     const nota = n => +($(`input[name="${n}"]:checked`, form)?.value || 0);
-
-    // nível = P × I, com as faixas que vieram do servidor (enum NivelRisco)
-    const faixas = $("[data-resultado]", form).dataset.niveis.split(";").map(s => s.split(":"));
+    const faixas = resultado.dataset.niveis.split(";").map(s => s.split(":"));
     const p = nota("probabilidade"), i = nota("impacto"), v = p * i;
     const faixa = v ? faixas.find(f => v >= +f[1]) : null;
     $("[data-resultado-calc]", form).textContent = v ? `${p} × ${i} = ${v}` : "Escolha probabilidade e impacto";
     const etiqueta = $("[data-resultado-nivel]", form);
     etiqueta.className = "nivel" + (faixa ? " n-" + faixa[0] : "");
     etiqueta.textContent = faixa ? faixa[2] : "—";
+  }
+
+  // ---------- plano e aceite: comportamento dos formulários ----------
+  function prepararFormsPlanoAceite() {
+    if (!drawer) return;
+    const residual = $("[data-form-residual]", drawer);
+    if (residual) atualizarNivel(residual);
+    // aceite: o botão só libera com a declaração marcada
+    const aceite = $("[data-form-aceite]", drawer);
+    if (aceite) $("[data-confirmar-aceite]", aceite).disabled = !$("[data-declaracao]", aceite).checked;
+    // ação: destaca que a evidência é obrigatória quando a situação é "Concluída"
+    const acao = $("[data-form-acao]", drawer);
+    if (acao) {
+      const concluir = $("[data-situacao-acao]", acao).value === "CONCLUIDA";
+      $("[data-evidencia-hint]", acao).classList.toggle("warn-text", concluir);
+      $("[data-evidencia-hint]", acao).textContent = concluir ? "(obrigatória para concluir)" : "(obrigatória ao concluir)";
+    }
+  }
+
+  // ---------- plano: filtros (situação, responsável, busca) ----------
+  const planos = $("#planos");
+  if (planos && $("#filtro-situacao-acao")) {
+    const filtrar = () => {
+      const q = $("#busca").value.trim().toLowerCase();
+      const sit = $("#filtro-situacao-acao").value, resp = $("#filtro-responsavel").value;
+      const ativo = q || sit || resp;
+      let algum = false;
+      $$("article.plano", planos).forEach(card => {
+        let visiveis = 0;
+        $$("tbody tr[data-situacao]", card).forEach(tr => {
+          const s = tr.dataset.situacao;
+          const okSit = !sit || (sit === "ABERTAS" ? (s === "PENDENTE" || s === "EM_ANDAMENTO")
+            : sit === "ATRASADAS" ? tr.dataset.atrasada === "true" : s === sit);
+          const ok = okSit && (!resp || tr.dataset.responsavel === resp) && (!q || tr.dataset.busca.includes(q));
+          tr.hidden = !ok;
+          if (ok) visiveis++;
+        });
+        // card aparece se tem ação visível, ou (só com busca) se o próprio risco bate
+        const riscoBate = q && !sit && !resp && card.dataset.buscaRisco.includes(q);
+        card.hidden = ativo && visiveis === 0 && !riscoBate;
+        if (!card.hidden) algum = true;
+      });
+      $("#sem-resultado").hidden = algum || !ativo;
+    };
+    $("#busca").addEventListener("input", filtrar);
+    $("#filtro-situacao-acao").addEventListener("change", filtrar);
+    $("#filtro-responsavel").addEventListener("change", filtrar);
+  }
+
+  // ---------- riscos: comportamento do formulário ----------
+  const ROTULO_IMPACTO = { 1: "Insignificante", 2: "Menor", 3: "Moderado", 4: "Maior", 5: "Catastrófico" };
+  function prepararFormRisco() {
+    const form = drawer && $("[data-form-risco]", drawer);
+    if (!form) return;
+    atualizarNivel(form);
 
     // sugestão de impacto = maior criticidade entre os ativos marcados
     const marcados = $$("#lista-ativos input:checked", form);

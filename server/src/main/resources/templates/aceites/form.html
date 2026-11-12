@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Drawer do aceite formal. O botão só libera com a declaração marcada (app.js). -->
+<form th:fragment="drawer" th:action="@{/aceites/{id}(id=${pendencia.risco().id()})}" th:object="${form}"
+      method="post" novalidate data-form-drawer data-form-aceite
+      th:with="r=${pendencia.risco()},residual=${pendencia.tipo().name() == 'RESIDUAL'}">
+    <div class="d-head">
+        <div>
+            <h2 th:text="'Aceite formal · ' + ${r.codigo()}">Aceite formal · RSK-005</h2>
+            <p th:text="${residual} ? 'Risco residual após o plano de ação' : 'Tratamento escolhido: Aceitar'">Tratamento: Aceitar</p>
+        </div>
+        <button class="x" type="button" data-drawer-fechar aria-label="Fechar">×</button>
+    </div>
+
+    <div class="d-body">
+        <div class="alert alert-err" role="alert" th:if="${#fields.hasGlobalErrors()}"
+             th:text="${#strings.listJoin(#fields.globalErrors(), ' ')}"></div>
+
+        <dl class="resumo">
+            <dt>Risco</dt><dd><b th:text="${r.titulo()}">Site fora do ar</b></dd>
+            <dt>Ativos</dt><dd th:text="${#strings.listJoin(r.ativos().![codigo() + ' ' + nome()], ', ')}">ATV-005 Site</dd>
+            <dt>Ameaça</dt><dd th:text="${r.ameaca().nome()}">DDoS</dd>
+            <dt>Vulnerabilidade</dt><dd th:text="${r.vulnerabilidade().nome()}">Ponto único de falha</dd>
+            <dt>Controles</dt><dd><span class="chips"><span class="ctrl" th:each="c : ${r.controles()}" th:text="${c.codigo()}" th:attr="title=${c.rotulo()}">8.14</span></span></dd>
+            <dt>Dono do risco</dt><dd th:text="${r.donoNome()}">Mariana Costa</dd>
+            <th:block th:if="${residual}">
+                <dt>Inerente</dt>
+                <dd><span class="nivel" th:classappend="'n-' + ${r.nivel()}"><span th:text="${r.nivel().rotulo}">Crítico</span>
+                    <small th:text="${r.probabilidade()} + '×' + ${r.impacto()} + '=' + ${r.valor()}">4×5=20</small></span></dd>
+                <dt>Ações</dt><dd th:text="${pendencia.acoesConcluidas()} + ' concluídas com evidência'">3 concluídas</dd>
+            </th:block>
+            <dt>Nível aceito</dt>
+            <dd><span class="nivel" th:classappend="'n-' + ${pendencia.nivel()}"><span th:text="${pendencia.nivel().rotulo}">Baixo</span>
+                <small th:text="${pendencia.probabilidade()} + '×' + ${pendencia.impacto()} + '=' + ${pendencia.valor()}">2×2=4</small></span></dd>
+        </dl>
+
+        <div class="field" th:classappend="${#fields.hasErrors('justificativa')} ? 'invalid'">
+            <label for="justificativa">Justificativa do aceite</label>
+            <textarea class="textarea" th:field="*{justificativa}" placeholder="Por que o negócio pode conviver com este risco"></textarea>
+            <span class="err" th:if="${#fields.hasErrors('justificativa')}" th:text="${#fields.errors('justificativa')[0]}"></span>
+        </div>
+        <div class="field" th:classappend="${#fields.hasErrors('condicoes')} ? 'invalid'">
+            <label for="condicoes">Condições <span class="hint">(opcional)</span></label>
+            <textarea class="textarea textarea-sm" th:field="*{condicoes}" placeholder="Ex.: reavaliar se o site passar a ter vendas online"></textarea>
+            <span class="err" th:if="${#fields.hasErrors('condicoes')}" th:text="${#fields.errors('condicoes')[0]}"></span>
+        </div>
+        <p class="validade">Válido por 12 meses: até <b th:text="${#temporals.format(validoAte, 'dd/MM/yyyy')}">11/11/2027</b>.
+            Cai automaticamente se o risco for alterado.</p>
+        <div class="field" th:classappend="${#fields.hasErrors('declaracao')} ? 'invalid'">
+            <label class="declara">
+                <input type="checkbox" th:field="*{declaracao}" data-declaracao>
+                <span>Declaro, como Gerente, que aceito formalmente este risco no nível indicado, ciente de que ele permanece e pode se concretizar.</span>
+            </label>
+            <span class="err" th:if="${#fields.hasErrors('declaracao')}" th:text="${#fields.errors('declaracao')[0]}"></span>
+        </div>
+    </div>
+
+    <div class="d-foot">
+        <button class="btn btn-ghost" type="button" data-drawer-fechar>Cancelar</button>
+        <button class="btn btn-primary" type="submit" data-confirmar-aceite>Registrar aceite</button>
+    </div>
+</form>
+</body>
+</html>

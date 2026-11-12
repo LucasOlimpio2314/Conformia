@@ -1,5 +1,8 @@
 package io.github.lucasolimpio.conformia.risco.web;
 
+import io.github.lucasolimpio.conformia.aceite.service.AceiteService;
+import io.github.lucasolimpio.conformia.plano.dto.PlanoRisco;
+import io.github.lucasolimpio.conformia.plano.service.PlanoAcaoService;
 import io.github.lucasolimpio.conformia.risco.domain.EscalaRisco;
 import io.github.lucasolimpio.conformia.risco.domain.NivelRisco;
 import io.github.lucasolimpio.conformia.risco.domain.OpcaoTratamento;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -41,9 +45,13 @@ public class RiscoController {
     private static final Pattern CODIGO = Pattern.compile("[A-Z]{3}-[A-Z0-9]{1,8}");
 
     private final RiscoService riscoService;
+    private final AceiteService aceiteService;
+    private final PlanoAcaoService planoService;
 
-    public RiscoController(RiscoService riscoService) {
+    public RiscoController(RiscoService riscoService, AceiteService aceiteService, PlanoAcaoService planoService) {
         this.riscoService = riscoService;
+        this.aceiteService = aceiteService;
+        this.planoService = planoService;
     }
 
     @GetMapping
@@ -57,6 +65,10 @@ public class RiscoController {
         }
         List<RiscoResumo> riscos = riscoService.listar();
         model.addAttribute("riscos", riscos);
+        // coluna Tratamento: "aceito até ...", "aguardando aceite" ou "2/3 ações"
+        model.addAttribute("aceites", aceiteService.vigentesPorRisco());
+        model.addAttribute("planos", planoService.planos().stream()
+                .collect(Collectors.toMap(PlanoRisco::riscoId, Function.identity())));
         model.addAttribute("porNivel", riscoService.contarAtivosPorNivel(riscos));
         model.addAttribute("niveis", NivelRisco.values());
         return "riscos/lista";

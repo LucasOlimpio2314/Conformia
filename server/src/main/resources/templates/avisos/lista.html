@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Avisos')}"></head>
+<body>
+<div class="app">
+    <aside th:replace="~{fragments/layout :: sidebar('avisos')}"></aside>
+
+    <main class="main">
+        <div class="crumbs">Administração / Avisos</div>
+        <div class="page-head">
+            <div>
+                <h1>Avisos</h1>
+                <p>Mudanças que pedem atenção do Gerente.</p>
+            </div>
+            <form th:action="@{/avisos/lidos}" method="post" th:if="${avisos.?[!lido()].size() > 0}">
+                <button class="btn btn-ghost btn-sm" type="submit">Marcar todos como lidos</button>
+            </form>
+        </div>
+
+        <section class="panel avisos">
+            <div class="aviso" th:each="a : ${avisos}" th:classappend="${a.lido()} ? 'lido'">
+                <span class="dot" aria-hidden="true"></span>
+                <div>
+                    <b th:text="${a.titulo()}">Aceite do RSK-007 caiu</b>
+                    <span th:text="${a.mensagem()}">Mensagem</span>
+                    <small class="mono" th:text="${#temporals.format(a.criadoEm(), 'dd/MM/yyyy HH:mm')}">11/11/2026 14:32</small>
+                </div>
+                <!-- "Ver" marca como lido e leva para a tela do aviso -->
+                <form th:action="@{/avisos/{id}/abrir(id=${a.id()})}" method="post">
+                    <button class="link" type="submit">Ver</button>
+                </form>
+            </div>
+            <div class="empty" th:if="${avisos.isEmpty()}">Nenhum aviso por enquanto.</div>
+        </section>
+    </main>
+</div>
+<div th:replace="~{fragments/layout :: toast}"></div>
+</body>
+</html>

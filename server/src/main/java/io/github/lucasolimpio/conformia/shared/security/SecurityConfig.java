@@ -45,6 +45,10 @@ public class SecurityConfig {
                         // riscos: todos leem; Auditor não altera
                         .requestMatchers(HttpMethod.GET, "/api/riscos/**").authenticated()
                         .requestMatchers("/api/riscos/**").hasAnyRole(EDITORES)
+                        // plano: todos leem, Auditor não altera; aceite: todos leem, só Gerente aceita/revoga
+                        .requestMatchers(HttpMethod.GET, "/api/plano/**", "/api/aceites/**").authenticated()
+                        .requestMatchers("/api/plano/**").hasAnyRole(EDITORES)
+                        .requestMatchers("/api/aceites/**").hasRole("GERENTE")
                         .anyRequest().authenticated())
                 // CSRF desligado só na API: o ataque depende do navegador enviar o cookie
                 // de outro site. Aqui o cookie é SameSite=Lax (não vai em POST de outro site),
@@ -76,6 +80,9 @@ public class SecurityConfig {
                         .requestMatchers("/inventario/**").hasAnyRole(EDITORES)
                         .requestMatchers(HttpMethod.GET, "/riscos").authenticated()
                         .requestMatchers("/riscos/**").hasAnyRole(EDITORES)
+                        .requestMatchers(HttpMethod.GET, "/plano", "/aceites").authenticated()
+                        .requestMatchers("/plano/**").hasAnyRole(EDITORES)
+                        .requestMatchers("/aceites/**").hasRole("GERENTE")
                         .anyRequest().authenticated())
                 .formLogin(form -> form
                         .loginPage("/login")

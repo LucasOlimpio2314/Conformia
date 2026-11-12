@@ -6,16 +6,30 @@
 
 | | |
 |---|---|
-| Fase | Módulo **riscos** (web + API) implementado na branch `feature/backend-risco`, aguardando commit do Lucas |
-| Próximo passo | Commitar (`C:\Faculdade\commit-modulo-risco.bat`) e juntar os PRs na ordem: usuário → inventário → risco. Depois: aceite formal (Gerente aceita riscos com tratamento "Aceitar") ou plano de ação (riscos "Mitigar") |
+| Fase | Plano de ação, aceite formal e avisos implementados na branch `feature/backend-aceite-plano`, aguardando commit do Lucas |
+| Próximo passo | Commitar (commit-modulo-aceite-plano.bat) e juntar os PRs na ordem: usuário → inventário → risco → aceite-plano. Depois: definir com o grupo (ex.: relatórios para auditoria, app Flutter) |
 
 ## Histórico
+
+### 2026-11-11 — Plano de ação, aceite formal e avisos
+- Branch `feature/backend-aceite-plano` (em cima da `feature/backend-risco`, commit `f7bf9ba`). Os dois módulos juntos porque o aceite do residual depende do plano.
+- Protótipo aprovado (artifact "Conformia Aceite e Plano — protótipo"). Lucas: controles do Anexo A são lista fixa da ISO, sem tela (item removido do menu).
+- `V4__cria_plano_aceite_aviso.sql`: residual esperado no `risco`; `acao_plano` (ACT-001, evidência obrigatória ao concluir); `aceite_risco` (foto do nível aceito, índice único parcial: 1 VIGENTE por risco); `aviso`.
+- **Plano** (`PlanoAcaoService`): riscos Mitigar/Transferir/Evitar; ações com responsável Gerente/Analista ativo, prazo, controle do próprio risco, situação e evidência; atrasada = em aberto com prazo vencido; residual ≤ inerente. Plano concluído (todas as ações não canceladas concluídas + residual definido) → aviso RESIDUAL_PRONTO aos Gerentes.
+- **Aceite** (`AceiteService`): só Gerente; tipo RISCO (tratamento Aceitar) ou RESIDUAL (plano concluído); justificativa ≥20 + declaração obrigatória; validade 12 meses; revogar com motivo. **Cai automaticamente** (INVALIDADO) quando muda probabilidade/impacto/ativos/tratamento do risco, o residual ou entra ação nova → aviso ACEITE_INVALIDADO com o que mudou e quem mudou. Encerrar o risco derruba sem aviso.
+- **Vencimento**: `VencimentoAceiteJob` (@Scheduled 6h) + verificação ao abrir a tela → VENCIDO + aviso ACEITE_VENCIDO.
+- **Avisos**: dentro do sistema, um por Gerente ativo; tela `/avisos` (Ver marca como lido e leva à tela); contadores no menu via bean `@menu` chamado do template (`MenuContadores`).
+- Lista de riscos: coluna Tratamento mostra "aceito até…", "aguardando aceite" ou "n/m ações".
+- `RespostaFetch` (shared/web): padrão X-Redirect/422 usado nos controllers novos.
+- **E2E no Chrome** (fluxo completo: criar risco Mitigar → ação atrasada → residual → concluir → aviso → aceite → mudar residual → aceite cai → aviso → Ver → aceitar → revogar). Bugs achados e corrigidos: (1) código ACT era gerado antes da validação e tentativa recusada "queimava" um número; (2) drawer focava o 1º `input` (no aceite era o checkbox da declaração) — agora foca o 1º campo de digitação.
+- Testes: + `AceiteServiceTest` (10), `PlanoAcaoServiceTest` (13), `AvisoServiceTest` (3), `RiscoServiceTest` +3, `AceitePlanoWebIT` (12), `AceitePlanoApiIT` (7). Total: 109 unitários + 85 integração.
+- Dados de teste no banco de desenvolvimento: RSK-002 (Mitigar, ACT-002 concluída, residual 2×4, aceite revogado).
 
 ### 2026-11-11 — Registro de riscos
 - Branch `feature/backend-risco` (criada em cima da `feature/backend-inventario`, commit `834462b`).
 - Protótipo aprovado após ajustes do Lucas: sem mapa de calor (só 4 cards por nível, clicáveis), sem coluna de situação (risco é ATIVO ou ENCERRADO), coluna "Controles (Anexo A)", ameaça e vulnerabilidade uma embaixo da outra.
 - `V3__cria_risco.sql`: catálogos `ameaca` (13 itens) e `vulnerabilidade` (12) com índice único em `lower(nome)`; `controle_anexo_a` com os 93 controles da ISO 27001:2022; `risco` + `risco_ativo` + `risco_controle`; sequência `risco_codigo_seq` (RSK-001).
-- Pacote `controle/` criado só com entidade + repository do Anexo A (base do futuro módulo "Controles do Anexo A").
+- Pacote `controle/` criado só com entidade + repository do Anexo A (lista fixa da norma, sem tela).
 - Regras (`RiscoService`): ≥1 ativo em uso (na edição pode manter ativo já ligado que foi descontinuado → aviso "Ativo descontinuado"), ≥1 controle, dono Gerente/Analista ativo (aviso "Dono inativo"), probabilidade/impacto 1–5, tratamento opcional ("a definir"), encerrar com justificativa 10–500, encerrado não edita. Catálogos ampliados por Gerente/Analista pelo "+ Nova" (`CatalogoRiscoService`).
 - Sugestão de impacto = maior criticidade C-I-D entre os ativos (só sugere, botão "Usar sugestão"); dono sugerido = proprietário do 1º ativo.
 - Modal de justificativa virou genérico (`data-justificar-*`): usado no "descontinuar" do inventário e no "encerrar" do risco.
@@ -90,6 +104,10 @@
 | 2026-11-11 | `/usuarios` só GERENTE; "Minha conta" para todos; só gerente gera temporária e nunca para si mesmo | Própria senha se troca confirmando a atual |
 | 2026-11-11 | "Manter conectado" removido; sessão expira em 30 min | Menos superfície de ataque e menos segredo no `.env` |
 | 2026-11-11 | Gerente edita nome/e-mail e ativa/desativa usuários; não pode se desativar; desativado perde a sessão na hora | Pedido do Lucas após o E2E; evita sistema sem gerente e acesso "fantasma" |
+| 2026-11-11 | Aceite formal: só Gerente; tipos RISCO e RESIDUAL; 12 meses; cai automaticamente se o risco/plano mudar e Gerentes recebem aviso | ISO 6.1.3 f; o Gerente aceitou um nível específico |
+| 2026-11-11 | Plano: ações por risco (responsável, prazo, controle do risco, evidência ao concluir) + residual esperado ≤ inerente | Plano concluído leva o residual para aceite |
+| 2026-11-11 | Avisos dentro do sistema (sem e-mail por enquanto), verificação diária de vencimento | Sem dependência nova; pronto para virar e-mail depois |
+| 2026-11-11 | Controles do Anexo A = lista fixa da ISO (V3), só leitura, **sem tela própria** (item removido do menu) | É a norma, não um cadastro do usuário |
 | 2026-11-11 | Risco: 1+ ativos, 1+ controles do Anexo A, catálogos de ameaça/vulnerabilidade ampliáveis por Gerente/Analista, só ATIVO/ENCERRADO | Pedido do Lucas no protótipo; controles amarram o risco à norma |
 | 2026-11-11 | Escalas: probabilidade Rara→Quase certa; impacto Insignificante→Catastrófico | Nomes mais usados em avaliações ISO 27005 |
 | 2026-11-11 | Inventário antes do risco; risco escolhe o ativo do inventário | Risco sempre ligado a um ativo real, sem texto solto |

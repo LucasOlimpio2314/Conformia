@@ -1,5 +1,6 @@
 package io.github.lucasolimpio.conformia.risco.service;
 
+import io.github.lucasolimpio.conformia.aceite.service.AceiteService;
 import io.github.lucasolimpio.conformia.controle.domain.ControleAnexoA;
 import io.github.lucasolimpio.conformia.controle.repository.ControleAnexoARepository;
 import io.github.lucasolimpio.conformia.inventario.domain.Ativo;
@@ -42,6 +43,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -65,6 +70,7 @@ class RiscoServiceTest {
     @Mock private VulnerabilidadeRepository vulnerabilidadeRepository;
     @Mock private ControleAnexoARepository controleRepository;
     @Mock private UsuarioRepository usuarioRepository;
+    @Mock private AceiteService aceiteService;
 
     private RiscoService service;
     private Usuario gerente;
@@ -76,7 +82,7 @@ class RiscoServiceTest {
     @BeforeEach
     void setUp() {
         service = new RiscoService(repository, ativoRepository, ameacaRepository, vulnerabilidadeRepository,
-                controleRepository, usuarioRepository, Clock.fixed(AGORA, ZoneOffset.UTC));
+                controleRepository, usuarioRepository, Clock.fixed(AGORA, ZoneOffset.UTC), aceiteService);
 
         gerente = usuario(GERENTE_ID, "Mariana Costa", Perfil.GERENTE, true);
         analista = usuario(ANALISTA_ID, "Rafael Nunes", Perfil.ANALISTA, true);
@@ -323,5 +329,44 @@ class RiscoServiceTest {
         // Assert
         assertThat(contagem).containsEntry(NivelRisco.CRITICO, 1L).containsEntry(NivelRisco.BAIXO, 1L)
                 .containsEntry(NivelRisco.ALTO, 0L).containsEntry(NivelRisco.MEDIO, 0L);
+    }
+    // ---------- aceite cai quando o risco muda ----------
+
+    @Test
+    void deveDerrubarOAceiteEAvisarQuandoOImpactoMuda() {
+        // Arrange — risco existente com P2 × I3; formulário muda para I5 e o ativo para o ERP
+        Risco risco = riscoExistente();
+
+        // Act
+        service.atualizar(RISCO_ID, form(ATIVO_ID, GERENTE_ID, 2, 5), ANALISTA_ID);
+
+        // Assert
+        verify(aceiteService).invalidarSeVigente(eq(risco), eq(analista), contains("impacto 3 → 5"), eq(true));
+    }
+
+    @Test
+    void naoDeveDerrubarOAceiteQuandoSoOTituloMuda() {
+        // Arrange — mesmos ativos, notas e tratamento; só o título muda
+        riscoExistente();
+        RiscoForm soTitulo = new RiscoForm("Título corrigido do risco", null, List.of(DESCONTINUADO_ID), 1L, 1L,
+                List.of("8.13"), GERENTE_ID, 2, 3, null);
+
+        // Act
+        service.atualizar(RISCO_ID, soTitulo, ANALISTA_ID);
+
+        // Assert
+        verify(aceiteService, never()).invalidarSeVigente(any(), any(), anyString(), anyBoolean());
+    }
+
+    @Test
+    void deveDerrubarOAceiteSemAvisoQuandoORiscoEEncerrado() {
+        // Arrange
+        Risco risco = riscoExistente();
+
+        // Act
+        service.encerrar(RISCO_ID, "Cenário deixou de existir", ANALISTA_ID);
+
+        // Assert
+        verify(aceiteService).invalidarSeVigente(risco, analista, "Risco encerrado", false);
     }
 }

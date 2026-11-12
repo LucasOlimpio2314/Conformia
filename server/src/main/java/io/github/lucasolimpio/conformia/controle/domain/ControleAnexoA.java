@@ -7,8 +7,8 @@ import jakarta.persistence.Table;
 
 /**
  * Controle do Anexo A da ISO/IEC 27001:2022 (ex.: 8.13 – Backup de informações).
- * Catálogo fixo carregado pela migration V3: o sistema só lê.
- * O futuro módulo "Controles do Anexo A" (declaração de aplicabilidade) parte daqui.
+ * Lista fixa da norma, carregada pela migration V3: o sistema só lê.
+ * Não tem tela nem cadastro — não é algo que o usuário muda.
  */
 @Entity
 @Table(name = "controle_anexo_a")

@@ -96,9 +96,14 @@
                                 <small th:text="${r.probabilidade()} + '×' + ${r.impacto()} + '=' + ${r.valor()}">4×5=20</small>
                             </span>
                         </td>
-                        <td>
+                        <td th:with="aceite=${aceites.get(r.id())},plano=${planos.get(r.id())}">
                             <span class="trat" th:if="${r.tratamento() != null}" th:text="${r.tratamento().rotulo}">Mitigar</span>
                             <span class="trat def" th:if="${r.tratamento() == null}">A definir</span>
+                            <span class="trat-status ok" th:if="${aceite != null}"
+                                  th:text="'aceito até ' + ${#temporals.format(aceite.validoAte(), 'dd/MM/yyyy')}">aceito até 11/11/2027</span>
+                            <span class="trat-status warn" th:if="${aceite == null and r.ativo() and r.tratamento() != null and r.tratamento().name() == 'ACEITAR'}">aguardando aceite</span>
+                            <span class="trat-status" th:if="${aceite == null and plano != null}"
+                                  th:text="${plano.aguardandoAceite()} ? 'residual aguardando aceite' : ${plano.concluidas()} + '/' + ${plano.validas()} + ' ações'">1/3 ações</span>
                         </td>
                         <td>
                             <div class="row-acts" sec:authorize="hasAnyRole('GERENTE','ANALISTA')" th:if="${r.ativo()}">
