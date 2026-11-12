@@ -28,7 +28,7 @@ Não adicionar dependência, framework ou trocar tecnologia sem perguntar antes.
 ```
 Conformia/
  ├─ server/   → Spring: telas web (Thymeleaf) + API do mobile + regras + banco
- ├─ mobile/   → Flutter (ainda não criado)
+ ├─ mobile/   → Flutter (app Android: lib/<modulo>/, mesma organização por módulo)
  └─ docs/     → documentação (docs/ia = arquivos para IA)
 ```
 

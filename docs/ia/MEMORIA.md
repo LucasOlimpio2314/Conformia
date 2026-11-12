@@ -6,10 +6,25 @@
 
 | | |
 |---|---|
-| Fase | Plano de ação, aceite formal e avisos implementados na branch `feature/backend-aceite-plano`, aguardando commit do Lucas |
-| Próximo passo | Commitar (commit-modulo-aceite-plano.bat) e juntar os PRs na ordem: usuário → inventário → risco → aceite-plano. Depois: definir com o grupo (ex.: relatórios para auditoria, app Flutter) |
+| Fase | App mobile Flutter implementado na branch `feature/mobile-base` (backend todo na `main`), aguardando commit do Lucas |
+| Próximo passo | Commitar (`C:\Faculdade\commit-modulo-mobile.bat`), juntar o PR e rodar `atualizar-main.bat`. Depois: definir com o grupo (ex.: relatórios para auditoria, ícone do app, build de release com HTTPS) |
 
 ## Histórico
+
+### 2026-11-12 — App mobile (Flutter)
+- **Emulador leve** `Conformia_Leve`: imagem `system-images;android-34;default;x86_64` (AOSP **sem apps do Google**), 720×1280, densidade 320, 2 GB, 2 núcleos, GPU host, animações desligadas. A imagem `google_apis` travava ("System UI isn't responding", carga 14,9) por causa do Play Services/Gboard no CPU fraco (i5-7200U).
+- `sdkmanager.bat` (cmdline-tools) quebra pacotes com `;` — instalar pelo PowerShell com aspas duplas dentro de simples: `& $sdkm '"ndk;28.2.13676358"'`. O Gradle tenta instalar o NDK sozinho e falha pelo mesmo motivo.
+- Protótipo aprovado (artifact "Conformia Mobile"). Lucas: cadastros ficam só na web; "Minhas ações" só do responsável (sem filtro "Todas"); avisos a cada 1 min.
+- Projeto: `flutter create --org io.github.lucasolimpio --project-name conformia --platforms android mobile` (Flutter 3.50 já usa o pacote `material_ui` no lugar de `package:flutter/material.dart`). Organização por módulo em `lib/` (core, auth, acoes, riscos, aceites, avisos, notificacoes, conta).
+- Pacotes: `flutter_riverpod` 3, `dio` + `cookie_jar` + `dio_cookie_manager` (cookie `JSESSIONID` salvo em arquivo → não pede login ao reabrir e a tarefa de segundo plano usa a mesma sessão), `path_provider`, `flutter_local_notifications` 23, `workmanager` 0.10, `shared_preferences`.
+- Android: `compileSdk = 37` (exigido pelo androidx.core 1.19), desugaring, `INTERNET` + `POST_NOTIFICATIONS`, HTTP sem HTTPS só no manifest de **debug**. Servidor: `--dart-define=API_URL` (padrão `http://10.0.2.2:8080`).
+- **Notificação sem Firebase**: app aberto → `Timer` de 1 min + ao voltar para a tela; app fechado → WorkManager periódico de **15 min (mínimo do Android)**. Maior id de aviso notificado salvo em `SharedPreferencesAsync` (sem cache, compartilhado entre isolates) → nunca repete. Ler aviso cancela a notificação (id da notificação = id do aviso). Só Gerente; logout/troca de usuário cancela a tarefa e zera a memória.
+- Riverpod 3: `retry` desligado no `ProviderScope` (senão repete chamadas que deram 401); provider não pode alterar outro no `build` (aba inicial é calculada na tela).
+- **E2E no emulador** (usuários de teste no banco de dev: "E2E Mobile" GERENTE id 5, "E2E Auditor" com senha redefinida): login com temporária → troca obrigatória (erro de confirmação) → permissão de notificação → minhas ações (ACT-004 atrasada) → concluir sem evidência (bloqueado) e com evidência → concluir ACT-003 → aviso RESIDUAL_PRONTO → **notificação em ~20 s** → toque abre Aceites → aceite com justificativa curta (erro do servidor) e válida → aviso lido → riscos (filtro, detalhe, plano) → conta → sair → auditor vê só Riscos/Conta e não agenda tarefa → **app fechado**: residual alterado pelo admin derrubou o aceite e a tarefa do WorkManager notificou "Aceite do RSK-002 caiu" (Worker SUCCESS). Para testar: `cmd jobscheduler run -f -n androidx.work.systemjobscheduler <pacote> <id>` só funciona depois do intervalo; `am kill` faz a WorkManager achar que houve force-stop e reagendar.
+- Atenção: com a tarefa de 15 min, a sessão de 30 min do Gerente não expira enquanto o celular estiver ligado (a consulta renova a sessão).
+- Ajustes do E2E: filtros em uma linha (chips compactos), erro do campo some ao digitar, erro com até 3 linhas, cartão de ação no detalhe do risco mostra o responsável.
+- Testes: 14 unitários (`flutter test`, AAA) + `flutter analyze` sem avisos.
+- Achado: no servidor, `curl` do Git Bash manda acento fora de UTF-8 → `JSON_INVALIDO`; usar `--data-binary @arquivo.json`. O app (dio) manda UTF-8 certo.
 
 ### 2026-11-11 — Plano de ação, aceite formal e avisos
 - Branch `feature/backend-aceite-plano` (em cima da `feature/backend-risco`, commit `f7bf9ba`). Os dois módulos juntos porque o aceite do residual depende do plano.
@@ -115,6 +130,10 @@
 | 2026-11-11 | Riscos e ativos: Gerente e Analista alteram, Auditor só lê, nada é excluído (encerrar/descontinuar com justificativa) | Histórico preservado para auditoria |
 | 2026-11-11 | Proprietário do ativo = usuário Gerente/Analista ativo; ativo pode ser terceirizado (fornecedor), mas o dono é interno | Responsabilidade não sai da empresa (A.5.9, A.5.23) |
 | 2026-11-11 | Classificação em 4 níveis + C-I-D de 1 a 5 por ativo | Esquema mais comum; criticidade sugere o impacto do risco |
+| 2026-11-12 | App mobile para consultar e executar; cadastros (riscos, ativos, usuários, criar ações) só na web | Formulários longos não cabem bem no celular; em campo a pessoa atualiza ações e aceita |
+| 2026-11-12 | Abas por perfil: Gerente (Ações, Riscos, Aceites, Conta), Analista (sem Aceites), Auditor (Riscos, Conta) | Cada perfil vê só o que pode usar |
+| 2026-11-12 | Flutter com Riverpod + dio/cookie_jar; notificação local sem Firebase (1 min aberto, 15 min fechado) | Sem conta Google/serviço externo; 15 min é o mínimo do Android para tarefa periódica |
+| 2026-11-12 | Emulador de desenvolvimento sem apps do Google (AOSP Android 34) | Notebook fraco; o app não usa serviços do Google |
 | 2026-11-11 | API mobile autenticada por sessão (cookie), igual à web — sem JWT | Reaproveita o login existente; logout/bloqueio imediatos; menos conceitos para o grupo |
 | 2026-11-05 | Testes no padrão AAA + nome de método por comportamento + AssertJ | Mais simples para o grupo aprender; o nome já dá a leitura de negócio. Migrar para Given-When-Then só se os testes virarem documentação para não-devs |
 | 2026-11-05 | Repositório privado, sem licença por enquanto | Evitar exposição acidental; possível venda futura |
@@ -125,9 +144,11 @@
 - [x] Criar no PostgreSQL: role `conformia_app`, bancos `conformia` e `conformia_test` (owner `conformia_app`).
 - [ ] Renomear `ServerApplication` → `ConformiaApplication` (opcional).
 - [ ] Adicionar colegas como collaborators e proteger a `main`.
-- [ ] Grupo definir versão do Flutter SDK; responsável do mobile cria `mobile/`.
+- [x] `mobile/` criado (Flutter 3.50). [ ] Grupo instalar a mesma versão do Flutter SDK.
 - [ ] Cada colega precisa adicionar `ADMIN_NOME`, `ADMIN_EMAIL`, `ADMIN_SENHA` no próprio `server/.env` (ver `.env.example`).
-- [ ] Mobile: guardar o cookie `JSESSIONID` no Flutter (pacote de cookies) — ver `docs/api/usuarios.md`.
+- [x] Mobile: cookie `JSESSIONID` guardado com `PersistCookieJar`.
+- [ ] Mobile: ícone próprio do app e da notificação (hoje é o padrão do Flutter).
+- [ ] Mobile: build de release exige HTTPS no servidor (HTTP só liberado no debug).
 - [x] Editar usuário (nome, e-mail, ativar/desativar).
 - [ ] Decidir se o Gerente pode **mudar o perfil** de um usuário (hoje não pode).
 - [x] `POST /api/usuarios` sem o campo `ativo` (corrigido).
