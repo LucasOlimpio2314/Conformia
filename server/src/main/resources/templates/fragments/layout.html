@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<!-- Cabeçalho comum: <head th:replace="~{fragments/layout :: head('Título')}"></head> -->
+<head th:fragment="head(titulo)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${titulo} + ' · Conformia'">Conformia</title>
+    <!-- token CSRF para as requisições via fetch (app.js lê daqui) -->
+    <meta name="_csrf" th:if="${_csrf}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${_csrf}" th:content="${_csrf.headerName}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/app.js}" defer></script>
+</head>
+
+<body>
+
+<!-- Menu lateral: <aside th:replace="~{fragments/layout :: sidebar('usuarios')}"></aside> -->
+<aside class="side" th:fragment="sidebar(ativo)" th:with="eu=${#authentication.principal}">
+    <div class="logo"><span class="logo-mark">C</span> Conformia</div>
+
+    <nav class="nav" aria-label="Riskdesk">
+        <div class="nav-label">Riskdesk</div>
+        <a th:href="@{/inventario}" th:classappend="${ativo == 'inventario'} ? 'active'"
+           th:attr="aria-current=${ativo == 'inventario'} ? 'page'">Inventário de ativos</a>
+        <a th:href="@{/riscos}" th:classappend="${ativo == 'riscos'} ? 'active'"
+           th:attr="aria-current=${ativo == 'riscos'} ? 'page'">Riscos</a>
+        <!-- contadores: bean "menu" (MenuContadores) chamado direto do template -->
+        <a th:href="@{/plano}" th:classappend="${ativo == 'plano'} ? 'active'"
+           th:attr="aria-current=${ativo == 'plano'} ? 'page'" th:with="atrasadas=${@menu.acoesAtrasadas()}">
+            Plano de ação
+            <span class="count warn" th:if="${atrasadas > 0}" th:text="${atrasadas}" title="Ações atrasadas">2</span>
+        </a>
+        <a th:href="@{/aceites}" th:classappend="${ativo == 'aceites'} ? 'active'"
+           th:attr="aria-current=${ativo == 'aceites'} ? 'page'" th:with="pendentes=${@menu.aceitesPendentes()}">
+            Aceites formais
+            <span class="count" th:if="${pendentes > 0}" th:text="${pendentes}" title="Aguardando aceite">1</span>
+        </a>
+    </nav>
+
+    <nav class="nav" aria-label="Administração" sec:authorize="hasRole('GERENTE')">
+        <div class="nav-label">Administração</div>
+        <a th:href="@{/avisos}" th:classappend="${ativo == 'avisos'} ? 'active'"
+           th:attr="aria-current=${ativo == 'avisos'} ? 'page'" th:with="naoLidos=${@menu.avisosNaoLidos(eu.id)}">
+            Avisos
+            <span class="count" th:if="${naoLidos > 0}" th:text="${naoLidos}" title="Avisos não lidos">3</span>
+        </a>
+        <a th:href="@{/usuarios}" th:classappend="${ativo == 'usuarios'} ? 'active'"
+           th:attr="aria-current=${ativo == 'usuarios'} ? 'page'">Usuários</a>
+    </nav>
+
+    <div class="me">
+        <a th:href="@{/minha-conta}" class="me-link" th:classappend="${ativo == 'conta'} ? 'active'" title="Minha conta">
+            <span class="avatar" th:text="${eu.iniciais}">AD</span>
+            <span class="who"><b th:text="${eu.nome}">Administrador</b><span th:text="${eu.perfil}">GERENTE</span></span>
+        </a>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit">Sair</button>
+        </form>
+    </div>
+</aside>
+
+<!-- Resposta vazia para fetch bem-sucedido: o cabeçalho X-Redirect diz para onde ir -->
+<span th:fragment="vazio" hidden></span>
+
+<!-- Aviso rápido no rodapé; mensagens de redirect chegam via flash attribute "toast" -->
+<div th:fragment="toast" class="toast" id="toast" role="status" aria-live="polite"
+     th:attr="data-msg=${toast}"></div>
+
+</body>
+</html>

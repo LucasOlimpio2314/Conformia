@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Minha conta')}"></head>
+<body>
+<div class="app">
+    <aside th:replace="~{fragments/layout :: sidebar('conta')}"></aside>
+
+    <main class="main">
+        <div class="crumbs">Minha conta</div>
+        <div class="page-head">
+            <div>
+                <h1>Minha conta</h1>
+                <p>Seus dados de acesso. Para mudar nome, e-mail ou perfil, fale com um Gerente.</p>
+            </div>
+        </div>
+
+        <div class="conta">
+            <section class="panel">
+                <div class="panel-head"><h2>Meus dados</h2></div>
+                <div class="panel-body">
+                    <div class="conta-id">
+                        <span class="avatar" th:text="${conta.iniciais()}">AD</span>
+                        <div><b th:text="${conta.nome()}">Administrador</b><span th:text="${conta.email()}">admin@conformia.local</span></div>
+                    </div>
+                    <dl class="dados">
+                        <dt>Perfil</dt>
+                        <dd>
+                            <span class="badge" th:classappend="'b-' + ${conta.perfil()}" th:text="${conta.perfil()}">GERENTE</span>
+                            <div class="field"><span class="hint" th:text="${conta.perfil().descricao}"></span></div>
+                        </dd>
+                        <dt>Último acesso</dt>
+                        <dd class="mono" th:text="${conta.ultimoAcesso() != null} ? ${#temporals.format(conta.ultimoAcesso(), 'dd/MM/yyyy HH:mm')} : '—'">—</dd>
+                        <dt>Conta criada em</dt>
+                        <dd class="mono" th:text="${#temporals.format(conta.criadoEm(), 'dd/MM/yyyy')}">05/11/2026</dd>
+                    </dl>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head">
+                    <h2>Alterar senha</h2>
+                    <p>Confirme a senha atual e escolha uma nova.</p>
+                </div>
+                <form class="panel-body" th:action="@{/minha-conta/senha}" method="post" data-regras-senha>
+                    <div class="alert alert-err" role="alert" th:if="${erro}" th:text="${erro}"></div>
+
+                    <div class="field" th:classappend="${campoErro == 'senhaAtual'} ? 'invalid'">
+                        <label for="senhaAtual">Senha atual</label>
+                        <div class="pwd">
+                            <input class="input" id="senhaAtual" name="senhaAtual" type="password" autocomplete="current-password" required>
+                            <button type="button" data-toggle="senhaAtual">Mostrar</button>
+                        </div>
+                    </div>
+                    <div class="field" th:classappend="${campoErro == 'novaSenha'} ? 'invalid'">
+                        <label for="novaSenha">Nova senha</label>
+                        <div class="pwd">
+                            <input class="input" id="novaSenha" name="novaSenha" type="password" autocomplete="new-password" required>
+                            <button type="button" data-toggle="novaSenha">Mostrar</button>
+                        </div>
+                    </div>
+                    <div class="field" th:classappend="${campoErro == 'confirmacao'} ? 'invalid'">
+                        <label for="confirmacao">Confirme a nova senha</label>
+                        <div class="pwd">
+                            <input class="input" id="confirmacao" name="confirmacao" type="password" autocomplete="new-password" required>
+                            <button type="button" data-toggle="confirmacao">Mostrar</button>
+                        </div>
+                    </div>
+
+                    <!-- Requisitos marcados ao vivo pelo app.js; a validação de verdade é no UsuarioService -->
+                    <ul class="rules" th:fragment="regras" aria-label="Requisitos da senha">
+                        <li data-r="tam">Entre 8 e 64 caracteres</li>
+                        <li data-r="mix">Letras e números</li>
+                        <li data-r="eq">As duas senhas iguais</li>
+                    </ul>
+
+                    <div><button class="btn btn-primary" type="submit">Salvar nova senha</button></div>
+                </form>
+            </section>
+        </div>
+    </main>
+</div>
+<div th:replace="~{fragments/layout :: toast}"></div>
+</body>
+</html>

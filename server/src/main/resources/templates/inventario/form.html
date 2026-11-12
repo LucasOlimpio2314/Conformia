@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Fragmento do drawer (novo e edição). Com erro de validação o servidor
+     devolve este mesmo fragmento (status 422) já com as mensagens. -->
+<form th:fragment="drawer" th:action="${ativoId == null} ? @{/inventario} : @{/inventario/{id}(id=${ativoId})}"
+      th:object="${form}" method="post" novalidate data-form-drawer data-form-ativo>
+    <div class="d-head">
+        <div>
+            <h2 th:text="${ativoId == null} ? 'Novo ativo' : 'Editar ' + ${ativo.codigo()}">Novo ativo</h2>
+            <p th:if="${ativoId == null}">O código é gerado ao salvar.</p>
+            <p th:if="${ativoId != null}"
+               th:text="'Última alteração em ' + ${#temporals.format(ativo.atualizadoEm(), 'dd/MM/yyyy HH:mm')} + ' por ' + ${ativo.atualizadoPorNome()}"></p>
+        </div>
+        <button class="x" type="button" data-drawer-fechar aria-label="Fechar">×</button>
+    </div>
+
+    <div class="d-body">
+        <div class="alert alert-err" role="alert" th:if="${#fields.hasGlobalErrors()}"
+             th:text="${#strings.listJoin(#fields.globalErrors(), ' ')}"></div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('nome')} ? 'invalid'">
+            <label for="nome">Nome do ativo</label>
+            <input class="input" th:field="*{nome}" autocomplete="off" placeholder="Ex.: Base de clientes do CRM">
+            <span class="err" th:if="${#fields.hasErrors('nome')}" th:text="${#fields.errors('nome')[0]}"></span>
+        </div>
+
+        <div class="row2">
+            <div class="field" th:classappend="${#fields.hasErrors('tipo')} ? 'invalid'">
+                <label for="tipo">Tipo</label>
+                <select class="select" th:field="*{tipo}">
+                    <option th:each="t : ${tipos}" th:value="${t}" th:text="${t.rotulo}">Informação</option>
+                </select>
+            </div>
+            <div class="field" th:classappend="${#fields.hasErrors('proprietarioId')} ? 'invalid'">
+                <label for="proprietarioId">Proprietário</label>
+                <select class="select" th:field="*{proprietarioId}">
+                    <option value="">Escolha um Gerente ou Analista</option>
+                    <option th:each="p : ${proprietarios}" th:value="${p.id()}"
+                            th:text="${p.nome()} + ' · ' + ${#strings.toLowerCase(p.perfil())}">Mariana Costa · gerente</option>
+                </select>
+                <span class="err" th:if="${#fields.hasErrors('proprietarioId')}" th:text="${#fields.errors('proprietarioId')[0]}"></span>
+                <span class="hint warn-text" th:if="${ativo != null and ativo.precisaNovoProprietario()}"
+                      th:text="'O proprietário atual (' + ${ativo.proprietarioNome()} + ') está inativo. Escolha outro.'"></span>
+                <span class="hint">Gerente ou Analista responsável. Auditor não pode ser proprietário.</span>
+            </div>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('descricao')} ? 'invalid'">
+            <label for="descricao">Descrição <span class="hint">(opcional)</span></label>
+            <textarea class="textarea" th:field="*{descricao}" placeholder="O que é, para que serve, que dados contém"></textarea>
+            <span class="err" th:if="${#fields.hasErrors('descricao')}" th:text="${#fields.errors('descricao')[0]}"></span>
+        </div>
+
+        <div class="switch-row">
+            <div><b>Ativo terceirizado</b><span>Fornecido por terceiro (cloud, SaaS, datacenter). O proprietário continua interno.</span></div>
+            <label class="switch"><input type="checkbox" th:field="*{terceirizado}" aria-label="Ativo terceirizado" data-terceirizado><i></i></label>
+        </div>
+        <div class="field" th:classappend="${#fields.hasErrors('fornecedor')} ? 'invalid'" data-campo-fornecedor
+             th:hidden="${!form.terceirizado()}">
+            <label for="fornecedor">Fornecedor</label>
+            <input class="input" th:field="*{fornecedor}" autocomplete="off" placeholder="Ex.: AWS, Microsoft 365, Equinix">
+            <span class="err" th:if="${#fields.hasErrors('fornecedor')}" th:text="${#fields.errors('fornecedor')[0]}"></span>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('localizacao')} ? 'invalid'">
+            <label for="localizacao">Localização <span class="hint">(opcional)</span></label>
+            <input class="input" th:field="*{localizacao}" autocomplete="off" placeholder="Ex.: sa-east-1, Sala de servidores, Sede">
+            <span class="err" th:if="${#fields.hasErrors('localizacao')}" th:text="${#fields.errors('localizacao')[0]}"></span>
+        </div>
+
+        <fieldset class="field">
+            <legend>Classificação da informação</legend>
+            <div class="seg">
+                <label th:each="c : ${classificacoes}" th:attr="data-descricao=${c.descricao}">
+                    <input type="radio" th:field="*{classificacao}" th:value="${c}"><span th:text="${c.rotulo}">Interna</span>
+                </label>
+            </div>
+            <span class="hint" data-classificacao-hint></span>
+        </fieldset>
+
+        <fieldset class="field">
+            <legend>Criticidade (C · I · D)</legend>
+            <div class="cid-box">
+                <div class="cid-row">
+                    <div><b>Confidencialidade</b><span>Dano se vazar</span></div>
+                    <div class="scale"><label th:each="n : ${escala}"><input type="radio" th:field="*{confidencialidade}" th:value="${n}" th:attr="aria-label='Confidencialidade ' + ${n}"><span th:text="${n}">1</span></label></div>
+                </div>
+                <div class="cid-row">
+                    <div><b>Integridade</b><span>Dano se for alterado</span></div>
+                    <div class="scale"><label th:each="n : ${escala}"><input type="radio" th:field="*{integridade}" th:value="${n}" th:attr="aria-label='Integridade ' + ${n}"><span th:text="${n}">1</span></label></div>
+                </div>
+                <div class="cid-row">
+                    <div><b>Disponibilidade</b><span>Dano se ficar fora</span></div>
+                    <div class="scale"><label th:each="n : ${escala}"><input type="radio" th:field="*{disponibilidade}" th:value="${n}" th:attr="aria-label='Disponibilidade ' + ${n}"><span th:text="${n}">1</span></label></div>
+                </div>
+                <div class="cid-result">
+                    <span class="legend">1 Muito baixo · 2 Baixo · 3 Médio · 4 Alto · 5 Muito alto</span>
+                    <span>Criticidade: <b data-criticidade-calc>3 · Média</b></span>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+
+    <div class="d-foot">
+        <button class="btn btn-ghost" type="button" data-drawer-fechar>Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar ativo</button>
+    </div>
+</form>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Aceites formais')}"></head>
+<body>
+<div class="app">
+    <aside th:replace="~{fragments/layout :: sidebar('aceites')}"></aside>
+
+    <main class="main">
+        <div class="crumbs">Riskdesk / Aceites formais</div>
+        <div class="page-head">
+            <div>
+                <h1>Aceites formais</h1>
+                <p>Riscos aceitos pela gestão, com justificativa e validade de 12 meses. <span class="ctrl-ref">· 6.1.3 f</span></p>
+            </div>
+        </div>
+
+        <h2 class="h2">Aguardando aceite</h2>
+        <div class="pend">
+            <div class="card-pend" th:each="p : ${pendencias}">
+                <span class="tipo" th:text="${p.tipo().name() == 'RESIDUAL'} ? 'Risco residual · após plano de ação' : 'Tratamento: Aceitar'">Tratamento: Aceitar</span>
+                <div><span class="code" th:text="${p.risco().codigo()}">RSK-005</span><h3 th:text="${p.risco().titulo()}">Site fora do ar</h3></div>
+                <div class="linha">
+                    Nível a aceitar:
+                    <span class="nivel" th:classappend="'n-' + ${p.nivel()}">
+                        <span th:text="${p.nivel().rotulo}">Baixo</span>
+                        <small th:text="${p.probabilidade()} + '×' + ${p.impacto()} + '=' + ${p.valor()}">2×2=4</small>
+                    </span>
+                    <span class="hint" th:if="${p.tipo().name() == 'RESIDUAL'}"
+                          th:text="'(inerente era ' + ${p.risco().probabilidade()} + '×' + ${p.risco().impacto()} + '=' + ${p.risco().valor()} + ')'"></span>
+                </div>
+                <div class="motivo" th:if="${p.anterior() != null}"
+                     th:classappend="${p.anterior().situacao().name() == 'VENCIDO'} ? 'motivo-warn'"
+                     th:text="'Aceite anterior ' + ${#strings.toLowerCase(p.anterior().situacao().rotulo)} + ': ' + ${p.anterior().motivoEncerramento()}">
+                    Aceite anterior invalidado: ...
+                </div>
+                <div class="acts">
+                    <button class="btn btn-primary btn-sm" type="button" sec:authorize="hasRole('GERENTE')"
+                            th:attr="data-drawer-url=@{/aceites/{id}/form(id=${p.risco().id()})}">Aceitar formalmente</button>
+                    <span class="hint" sec:authorize="!hasRole('GERENTE')">Só um Gerente pode aceitar.</span>
+                </div>
+            </div>
+            <div class="panel empty" th:if="${pendencias.isEmpty()}">Nenhum risco aguardando aceite.</div>
+        </div>
+
+        <h2 class="h2">Histórico de aceites</h2>
+        <section class="panel">
+            <div class="table-wrap">
+                <table class="tabela-aceites">
+                    <thead><tr><th>Risco</th><th>Tipo</th><th>Nível aceito</th><th>Aceito por</th><th>Validade</th><th>Situação</th><th><span class="sr-only">Ações</span></th></tr></thead>
+                    <tbody>
+                    <tr th:each="a : ${historico}">
+                        <td>
+                            <div class="risk">
+                                <b><span class="code" th:text="${a.riscoCodigo()}">RSK-005</span> <span th:text="${a.riscoTitulo()}">Site</span></b>
+                                <span th:text="'“' + ${a.justificativa()} + '”'">“Justificativa”</span>
+                                <span th:if="${a.condicoes() != null}" th:text="'Condições: ' + ${a.condicoes()}"></span>
+                                <span th:if="${a.motivoEncerramento() != null}" th:text="${a.motivoEncerramento()}"></span>
+                            </div>
+                        </td>
+                        <td th:text="${a.tipo().rotulo}">Risco</td>
+                        <td>
+                            <span class="nivel" th:classappend="'n-' + ${a.nivel()}">
+                                <span th:text="${a.nivel().rotulo}">Baixo</span>
+                                <small th:text="${a.probabilidade()} + '×' + ${a.impacto()} + '=' + ${a.valor()}">2×2=4</small>
+                            </span>
+                        </td>
+                        <td>
+                            <div class="owner"><span th:text="${a.aceitoPorNome()}">Mariana Costa</span>
+                                <span class="hint" th:text="'em ' + ${#temporals.format(a.aceitoEm(), 'dd/MM/yyyy')}">em 10/03/2026</span></div>
+                        </td>
+                        <td class="mono" th:text="'até ' + ${#temporals.format(a.validoAte(), 'dd/MM/yyyy')}">até 10/03/2027</td>
+                        <td><span class="pill" th:classappend="'p-' + ${a.situacao()}" th:text="${a.situacao().rotulo}">Vigente</span></td>
+                        <td>
+                            <div class="row-acts" sec:authorize="hasRole('GERENTE')" th:if="${a.vigente()}">
+                                <button class="row-act danger" type="button"
+                                        th:attr="data-justificar-url=@{/aceites/revogacoes/{id}(id=${a.id()})},data-justificar-codigo=${a.riscoCodigo()}">Revogar</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${historico.isEmpty()}"><td colspan="7" class="empty">Nenhum aceite registrado ainda.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer drawer-lg" id="drawer" role="dialog" aria-modal="true" aria-label="Aceite formal" aria-hidden="true"></aside>
+
+<!-- Modal: revogar aceite (modal de justificativa genérico) -->
+<div class="modal-scrim" id="modal-justificativa" hidden sec:authorize="hasRole('GERENTE')">
+    <form class="modal modal-form" role="dialog" aria-modal="true" aria-labelledby="rev-titulo" novalidate>
+        <h3 id="rev-titulo">Revogar aceite do <span data-justificar-alvo></span>?</h3>
+        <p>O aceite deixa de valer na hora e o risco volta a aguardar aceite. O registro continua no histórico.</p>
+        <div class="field" data-justificar-campo>
+            <label for="justificativa">Motivo da revogação</label>
+            <textarea class="textarea" id="justificativa" name="justificativa"
+                      placeholder="Ex.: o site passou a ter vendas online; o impacto mudou"></textarea>
+            <span class="err" data-justificar-erro></span>
+        </div>
+        <div class="m-actions">
+            <button class="btn btn-ghost" type="button" data-justificar-fechar>Cancelar</button>
+            <button class="btn btn-danger" type="submit">Revogar aceite</button>
+        </div>
+    </form>
+</div>
+
+<div th:replace="~{fragments/layout :: toast}"></div>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Drawer do risco residual esperado. Reaproveita o cálculo de nível do formulário de risco (data-resultado). -->
+<form th:fragment="drawer" th:action="@{/plano/{id}/residual(id=${plano.riscoId()})}" th:object="${form}"
+      method="post" novalidate data-form-drawer data-form-residual>
+    <div class="d-head">
+        <div>
+            <h2>Risco residual esperado</h2>
+            <p th:text="${plano.codigo()} + ' · como o risco deve ficar depois do plano'">RSK-001</p>
+        </div>
+        <button class="x" type="button" data-drawer-fechar aria-label="Fechar">×</button>
+    </div>
+
+    <div class="d-body">
+        <div class="alert alert-err" role="alert" th:if="${#fields.hasGlobalErrors()}"
+             th:text="${#strings.listJoin(#fields.globalErrors(), ' ')}"></div>
+
+        <div class="resultado">
+            <span class="calc">Inerente hoje</span>
+            <span class="nivel" th:classappend="'n-' + ${plano.nivel()}">
+                <span th:text="${plano.nivel().rotulo}">Crítico</span>
+                <small th:text="${plano.probabilidade()} + '×' + ${plano.impacto()} + '=' + ${plano.valor()}">4×5=20</small>
+            </span>
+        </div>
+
+        <fieldset class="field" th:classappend="${#fields.hasErrors('probabilidade')} ? 'invalid'">
+            <legend>Probabilidade depois das ações</legend>
+            <div class="escala">
+                <label th:each="n : ${probabilidades}">
+                    <input type="radio" th:field="*{probabilidade}" th:value="${n.valor()}">
+                    <b th:text="${n.valor()}">1</b><span th:text="${n.rotulo()}">Rara</span>
+                </label>
+            </div>
+            <span class="err" th:if="${#fields.hasErrors('probabilidade')}" th:text="${#fields.errors('probabilidade')[0]}"></span>
+        </fieldset>
+        <fieldset class="field" th:classappend="${#fields.hasErrors('impacto')} ? 'invalid'">
+            <legend>Impacto depois das ações</legend>
+            <div class="escala">
+                <label th:each="n : ${impactos}">
+                    <input type="radio" th:field="*{impacto}" th:value="${n.valor()}">
+                    <b th:text="${n.valor()}">1</b><span th:text="${n.rotulo()}">Insignificante</span>
+                </label>
+            </div>
+            <span class="err" th:if="${#fields.hasErrors('impacto')}" th:text="${#fields.errors('impacto')[0]}"></span>
+        </fieldset>
+        <div class="resultado" data-resultado th:attr="data-niveis=${#strings.listJoin(niveis.![name() + ':' + minimo + ':' + rotulo], ';')}">
+            <span class="calc" data-resultado-calc>Escolha probabilidade e impacto</span>
+            <span class="nivel" data-resultado-nivel>—</span>
+        </div>
+        <p class="hint">O residual não pode ser maior que o risco inerente. Mudar o residual depois de aceito derruba o aceite e avisa os Gerentes.</p>
+    </div>
+
+    <div class="d-foot">
+        <button class="btn btn-ghost" type="button" data-drawer-fechar>Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar residual</button>
+    </div>
+</form>
+</body>
+</html>

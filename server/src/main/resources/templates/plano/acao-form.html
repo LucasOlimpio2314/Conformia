@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Drawer da ação (nova e atualizar). Erro volta com status 422. -->
+<form th:fragment="drawer"
+      th:action="${acao == null} ? @{/plano/{r}/acoes(r=${plano.riscoId()})} : @{/plano/acoes/{id}(id=${acao.id()})}"
+      th:object="${form}" method="post" novalidate data-form-drawer data-form-acao>
+    <div class="d-head">
+        <div>
+            <h2 th:text="${acao == null} ? 'Nova ação' : 'Atualizar ' + ${acao.codigo()}">Nova ação</h2>
+            <p th:text="${plano.codigo()} + ' · ' + ${plano.titulo()}">RSK-001 · Sequestro de dados</p>
+        </div>
+        <button class="x" type="button" data-drawer-fechar aria-label="Fechar">×</button>
+    </div>
+
+    <div class="d-body">
+        <div class="alert alert-err" role="alert" th:if="${#fields.hasGlobalErrors()}"
+             th:text="${#strings.listJoin(#fields.globalErrors(), ' ')}"></div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('titulo')} ? 'invalid'">
+            <label for="titulo">Ação</label>
+            <input class="input" th:field="*{titulo}" autocomplete="off" placeholder="Ex.: Ativar MFA no CRM para todos">
+            <span class="err" th:if="${#fields.hasErrors('titulo')}" th:text="${#fields.errors('titulo')[0]}"></span>
+        </div>
+
+        <div class="row2">
+            <div class="field" th:classappend="${#fields.hasErrors('responsavelId')} ? 'invalid'">
+                <label for="responsavelId">Responsável</label>
+                <select class="select" th:field="*{responsavelId}">
+                    <option value="">Escolha um Gerente ou Analista</option>
+                    <option th:each="u : ${opcoes.responsaveis()}" th:value="${u.id()}"
+                            th:text="${u.nome()} + ' · ' + ${#strings.toLowerCase(u.perfil())}">Rafael Nunes · analista</option>
+                </select>
+                <span class="err" th:if="${#fields.hasErrors('responsavelId')}" th:text="${#fields.errors('responsavelId')[0]}"></span>
+            </div>
+            <div class="field" th:classappend="${#fields.hasErrors('prazo')} ? 'invalid'">
+                <label for="prazo">Prazo</label>
+                <input class="input" type="date" th:field="*{prazo}">
+                <span class="err" th:if="${#fields.hasErrors('prazo')}" th:text="${#fields.errors('prazo')[0]}"></span>
+            </div>
+        </div>
+
+        <div class="row2">
+            <div class="field" th:classappend="${#fields.hasErrors('controle')} ? 'invalid'">
+                <label for="controle">Controle do Anexo A</label>
+                <select class="select" th:field="*{controle}">
+                    <option th:each="c : ${opcoes.controles()}" th:value="${c.codigo()}" th:text="${c.rotulo()}">8.13 – Backup</option>
+                </select>
+                <span class="err" th:if="${#fields.hasErrors('controle')}" th:text="${#fields.errors('controle')[0]}"></span>
+                <span class="hint">Controles ligados ao risco.</span>
+            </div>
+            <div class="field" th:classappend="${#fields.hasErrors('situacao')} ? 'invalid'">
+                <label for="situacao">Situação</label>
+                <select class="select" th:field="*{situacao}" data-situacao-acao>
+                    <option th:each="s : ${opcoes.situacoes()}" th:value="${s}" th:text="${s.rotulo}">Pendente</option>
+                </select>
+                <span class="hint">Concluída ou cancelada não pode mais ser alterada.</span>
+            </div>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('evidencia')} ? 'invalid'">
+            <label for="evidencia">Evidência <span class="hint" data-evidencia-hint>(obrigatória ao concluir)</span></label>
+            <textarea class="textarea" th:field="*{evidencia}"
+                      placeholder="O que comprova que foi feito: nº do chamado, link, documento"></textarea>
+            <span class="err" th:if="${#fields.hasErrors('evidencia')}" th:text="${#fields.errors('evidencia')[0]}"></span>
+        </div>
+
+        <p class="hint" th:if="${acao != null}"
+           th:text="'Última alteração em ' + ${#temporals.format(acao.atualizadoEm(), 'dd/MM/yyyy HH:mm')} + ' por ' + ${acao.atualizadoPorNome()}"></p>
+    </div>
+
+    <div class="d-foot">
+        <button class="btn btn-ghost" type="button" data-drawer-fechar>Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar ação</button>
+    </div>
+</form>
+</body>
+</html>

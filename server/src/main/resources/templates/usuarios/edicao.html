@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Drawer de edição. Perfil e senha não mudam aqui. Com erro, volta com status 422. -->
+<form th:fragment="drawer" th:action="@{/usuarios/{id}(id=${usuario.id()})}" th:object="${form}"
+      method="post" novalidate data-form-drawer>
+    <div class="d-head">
+        <div>
+            <h2 th:text="'Editar ' + ${usuario.primeiroNome()}">Editar Mariana</h2>
+            <p th:text="${usuario.perfil().rotulo} + ' · criado em ' + ${#temporals.format(usuario.criadoEm(), 'dd/MM/yyyy')}">Analista</p>
+        </div>
+        <button class="x" type="button" data-drawer-fechar aria-label="Fechar">×</button>
+    </div>
+
+    <div class="d-body">
+        <div class="alert alert-err" role="alert" th:if="${#fields.hasGlobalErrors()}"
+             th:text="${#strings.listJoin(#fields.globalErrors(), ' ')}"></div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('nome')} ? 'invalid'">
+            <label for="nome">Nome completo</label>
+            <input class="input" th:field="*{nome}" autocomplete="off">
+            <span class="err" th:if="${#fields.hasErrors('nome')}" th:text="${#fields.errors('nome')[0]}"></span>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('email')} ? 'invalid'">
+            <label for="email">E-mail</label>
+            <input class="input" th:field="*{email}" type="email" autocomplete="off">
+            <span class="err" th:if="${#fields.hasErrors('email')}" th:text="${#fields.errors('email')[0]}"></span>
+            <span class="hint">É o login. Se mudar, avise a pessoa: ela passa a entrar com o e-mail novo.</span>
+        </div>
+
+        <!-- O próprio Gerente não pode se desativar: envia sempre "ativo=true" -->
+        <input type="hidden" name="ativo" value="true" th:if="${proprio}">
+        <div class="switch-row" th:unless="${proprio}">
+            <div>
+                <b>Acesso ativo</b>
+                <span>Desativado não entra no sistema e perde a sessão aberta na hora. O histórico é mantido.</span>
+            </div>
+            <label class="switch"><input type="checkbox" th:field="*{ativo}" aria-label="Acesso ativo"><i></i></label>
+        </div>
+        <span class="err" th:if="${#fields.hasErrors('ativo')}" th:text="${#fields.errors('ativo')[0]}"></span>
+        <div class="info" th:if="${proprio}">
+            <b>Esta é a sua conta</b>
+            Você pode corrigir nome e e-mail, mas não desativar o próprio acesso. Para trocar a senha, use Minha conta.
+        </div>
+    </div>
+
+    <div class="d-foot">
+        <button class="btn btn-ghost" type="button" data-drawer-fechar>Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar alterações</button>
+    </div>
+</form>
+</body>
+</html>

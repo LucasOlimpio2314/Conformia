@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Plano de ação')}"></head>
+<body>
+<div class="app">
+    <aside th:replace="~{fragments/layout :: sidebar('plano')}"></aside>
+
+    <main class="main">
+        <div class="crumbs">Riskdesk / Plano de ação</div>
+        <div class="page-head">
+            <div>
+                <h1>Plano de ação</h1>
+                <p>Ações para tratar os riscos (Mitigar, Transferir, Evitar). <span class="ctrl-ref">· 6.1.3 e · 8.3</span></p>
+            </div>
+            <span class="readonly-note" sec:authorize="hasRole('AUDITOR')">Modo leitura: perfil Auditor</span>
+        </div>
+
+        <div class="kpis kpis-info">
+            <div class="kpi-info"><span>Ações em aberto</span><b th:text="${indicadores.emAberto()}">0</b><small>pendentes + em andamento</small></div>
+            <div class="kpi-info alerta"><span>Atrasadas</span><b th:text="${indicadores.atrasadas()}">0</b><small>prazo vencido</small></div>
+            <div class="kpi-info"><span>Concluídas</span><b th:text="${indicadores.concluidas()}">0</b><small>com evidência</small></div>
+            <div class="kpi-info"><span>Prontos para aceite</span><b th:text="${indicadores.prontosParaAceite()}">0</b><small>residual aguardando o Gerente</small></div>
+        </div>
+
+        <section class="panel">
+            <div class="toolbar">
+                <label class="search">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.25" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input class="input" id="busca" type="search" placeholder="Buscar por risco, ação ou responsável" aria-label="Buscar no plano">
+                </label>
+                <div class="grp">
+                    <select class="select" id="filtro-situacao-acao" aria-label="Situação da ação">
+                        <option value="">Todas as situações</option>
+                        <option value="ABERTAS">Em aberto</option>
+                        <option value="ATRASADAS">Atrasadas</option>
+                        <option value="CONCLUIDA">Concluídas</option>
+                        <option value="CANCELADA">Canceladas</option>
+                    </select>
+                    <select class="select" id="filtro-responsavel" aria-label="Responsável">
+                        <option value="">Todos os responsáveis</option>
+                        <option th:each="nome : ${responsaveis}" th:value="${nome}" th:text="${nome}">Rafael Nunes</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <div class="planos" id="planos">
+            <article class="plano" th:each="p : ${planos}"
+                     th:attr="data-busca-risco=${#strings.toLowerCase(p.codigo() + ' ' + p.titulo())}">
+                <div class="plano-head">
+                    <div>
+                        <span class="code" th:text="${p.codigo()}">RSK-001</span>
+                        <h3 th:text="${p.titulo()}">Sequestro de dados do ERP</h3>
+                        <div class="meta">
+                            <span th:text="'Tratamento: ' + ${p.tratamento().rotulo}">Tratamento: Mitigar</span> ·
+                            Inerente
+                            <span class="nivel" th:classappend="'n-' + ${p.nivel()}">
+                                <span th:text="${p.nivel().rotulo}">Crítico</span>
+                                <small th:text="${p.probabilidade()} + '×' + ${p.impacto()} + '=' + ${p.valor()}">4×5=20</small>
+                            </span>
+                            <span class="seta" aria-hidden="true">→</span> Residual esperado
+                            <span class="nivel" th:if="${p.temResidual()}" th:classappend="'n-' + ${p.nivelResidual()}">
+                                <span th:text="${p.nivelResidual().rotulo}">Médio</span>
+                                <small th:text="${p.probabilidadeResidual()} + '×' + ${p.impactoResidual()} + '=' + ${p.valorResidual()}">2×3=6</small>
+                            </span>
+                            <i th:unless="${p.temResidual()}" class="nao-definido">não definido</i>
+                        </div>
+                    </div>
+                    <div class="plano-lado">
+                        <div class="progresso">
+                            <span th:text="${p.concluidas()} + '/' + ${p.validas()} + ' concluídas'">1/3 concluídas</span>
+                            <span class="barra"><i th:style="'width:' + ${p.percentual()} + '%'"></i></span>
+                        </div>
+                        <div class="plano-acts" sec:authorize="hasAnyRole('GERENTE','ANALISTA')">
+                            <button class="btn btn-ghost btn-sm" type="button"
+                                    th:attr="data-drawer-url=@{/plano/{id}/residual/form(id=${p.riscoId()})}">Residual esperado</button>
+                            <button class="btn btn-primary btn-sm" type="button"
+                                    th:attr="data-drawer-url=@{/plano/{id}/acoes/nova/form(id=${p.riscoId()})}">+ Ação</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pronto" th:if="${p.aguardandoAceite()}">
+                    <span>✓ Plano concluído — risco residual aguardando aceite formal do Gerente.</span>
+                    <a class="btn btn-primary btn-sm" th:href="@{/aceites}" sec:authorize="hasRole('GERENTE')">Ir para aceite</a>
+                </div>
+                <div class="pronto" th:if="${p.aceiteVigente() != null}">
+                    <span th:text="'✓ Residual aceito até ' + ${#temporals.format(p.aceiteVigente().validoAte(), 'dd/MM/yyyy')}">✓ Residual aceito</span>
+                </div>
+                <div class="aviso-plano" th:if="${!p.temResidual() and !p.acoes().isEmpty()}">
+                    Defina o residual esperado: sem ele o plano não vai para aceite.
+                </div>
+
+                <div class="table-wrap">
+                    <table class="tabela-acoes">
+                        <thead><tr><th>Ação</th><th>Responsável</th><th>Prazo</th><th>Controle</th><th>Situação</th><th><span class="sr-only">Ações</span></th></tr></thead>
+                        <tbody>
+                        <tr th:each="a : ${p.acoes()}"
+                            th:attr="data-situacao=${a.situacao()},data-atrasada=${a.atrasada()},data-responsavel=${a.responsavelNome()},data-busca=${#strings.toLowerCase(p.codigo() + ' ' + p.titulo() + ' ' + a.codigo() + ' ' + a.titulo() + ' ' + a.responsavelNome())}"
+                            th:classappend="${a.codigo() == destaque} ? 'new'">
+                            <td>
+                                <div class="acao">
+                                    <b><span class="code" th:text="${a.codigo()}">ACT-001</span> <span th:text="${a.titulo()}">Atualizar ERP</span></b>
+                                    <span th:if="${a.evidencia() != null}" th:text="'Evidência: ' + ${a.evidencia()}">Evidência: chamado #4512</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="owner" th:classappend="${!a.responsavelAtivo()} ? 'inativo'">
+                                    <span class="avatar" th:text="${a.iniciaisResponsavel()}">RN</span>
+                                    <span th:text="${a.responsavelNome()}">Rafael Nunes</span>
+                                    <span class="warn-pill" th:if="${!a.responsavelAtivo() and a.editavel()}">Responsável inativo</span>
+                                </div>
+                            </td>
+                            <td class="mono" th:classappend="${a.atrasada()} ? 'atrasada'" th:text="${#temporals.format(a.prazo(), 'dd/MM/yyyy')}">30/10/2026</td>
+                            <td><span class="ctrl" th:text="${a.controle().codigo()}" th:attr="title=${a.controle().rotulo()}">8.8</span></td>
+                            <td><span class="pill" th:classappend="'p-' + ${a.situacao()}" th:text="${a.situacao().rotulo}">Pendente</span></td>
+                            <td>
+                                <div class="row-acts" sec:authorize="hasAnyRole('GERENTE','ANALISTA')" th:if="${a.editavel()}">
+                                    <button class="row-act" type="button" th:attr="data-drawer-url=@{/plano/acoes/{id}/form(id=${a.id()})}">Atualizar</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="sem-acao" th:if="${p.acoes().isEmpty()}"><td colspan="6" class="empty">Nenhuma ação cadastrada — clique em “+ Ação”.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+            <div class="panel empty" th:if="${planos.isEmpty()}">
+                Nenhum risco ativo com tratamento Mitigar, Transferir ou Evitar. Defina o tratamento no registro de riscos.
+            </div>
+            <div class="panel empty" id="sem-resultado" hidden>Nenhuma ação com esses filtros.</div>
+        </div>
+    </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer drawer-lg" id="drawer" role="dialog" aria-modal="true" aria-label="Plano de ação" aria-hidden="true"></aside>
+<div th:replace="~{fragments/layout :: toast}"></div>
+</body>
+</html>
