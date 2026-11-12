@@ -1,6 +1,7 @@
 package io.github.lucasolimpio.conformia.inventario.repository;
 
 import io.github.lucasolimpio.conformia.inventario.domain.Ativo;
+import io.github.lucasolimpio.conformia.inventario.domain.SituacaoAtivo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -18,4 +19,7 @@ public interface AtivoRepository extends JpaRepository<Ativo, Long> {
      */
     @Query("select a from Ativo a join fetch a.proprietario order by a.id")
     List<Ativo> listarComProprietario();
+
+    /** Ativos que podem ser ligados a um risco novo. */
+    List<Ativo> findBySituacaoOrderByCodigoAsc(SituacaoAtivo situacao);
 }

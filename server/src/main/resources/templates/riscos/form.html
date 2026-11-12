@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Drawer do risco (novo e edição). Erro de validação volta com status 422. -->
+<form th:fragment="drawer" th:action="${riscoId == null} ? @{/riscos} : @{/riscos/{id}(id=${riscoId})}"
+      th:object="${form}" method="post" novalidate data-form-drawer data-form-risco
+      th:attr="data-url-ameaca=@{/riscos/catalogo/ameacas},data-url-vulnerabilidade=@{/riscos/catalogo/vulnerabilidades}">
+    <div class="d-head">
+        <div>
+            <h2 th:text="${riscoId == null} ? 'Novo risco' : 'Editar ' + ${risco.codigo()}">Novo risco</h2>
+            <p th:if="${riscoId == null}">O código é gerado ao salvar.</p>
+            <p th:if="${riscoId != null}"
+               th:text="'Última alteração em ' + ${#temporals.format(risco.atualizadoEm(), 'dd/MM/yyyy HH:mm')} + ' por ' + ${risco.atualizadoPorNome()}"></p>
+        </div>
+        <button class="x" type="button" data-drawer-fechar aria-label="Fechar">×</button>
+    </div>
+
+    <div class="d-body">
+        <div class="alert alert-err" role="alert" th:if="${#fields.hasGlobalErrors()}"
+             th:text="${#strings.listJoin(#fields.globalErrors(), ' ')}"></div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('titulo')} ? 'invalid'">
+            <label for="titulo">Título do risco</label>
+            <input class="input" th:field="*{titulo}" autocomplete="off" placeholder="Ex.: Sequestro de dados do ERP por ransomware">
+            <span class="err" th:if="${#fields.hasErrors('titulo')}" th:text="${#fields.errors('titulo')[0]}"></span>
+        </div>
+        <div class="field" th:classappend="${#fields.hasErrors('cenario')} ? 'invalid'">
+            <label for="cenario">Cenário <span class="hint">(opcional)</span></label>
+            <textarea class="textarea" th:field="*{cenario}" placeholder="Como o risco aconteceria e o que causaria"></textarea>
+            <span class="err" th:if="${#fields.hasErrors('cenario')}" th:text="${#fields.errors('cenario')[0]}"></span>
+        </div>
+
+        <div class="sec">Onde · o quê</div>
+
+        <!-- Ativos: data-criticidade sugere o impacto; data-proprietario sugere o dono -->
+        <div class="field" th:classappend="${#fields.hasErrors('ativoIds')} ? 'invalid'">
+            <label for="busca-ativo">Ativos afetados</label>
+            <div class="picker">
+                <input class="input" id="busca-ativo" placeholder="Filtrar ativos do inventário" autocomplete="off" data-filtra="#lista-ativos">
+                <ul id="lista-ativos">
+                    <li th:each="a : ${opcoes.ativos()}" th:attr="data-busca=${#strings.toLowerCase(a.codigo() + ' ' + a.nome())}">
+                        <label>
+                            <input type="checkbox" th:field="*{ativoIds}" th:value="${a.id()}"
+                                   th:attr="data-criticidade=${a.criticidade()},data-proprietario=${a.proprietarioId()},data-codigo=${a.codigo()}">
+                            <span class="p-name"><b th:text="${a.codigo()}">ATV-001</b><span th:text="${a.nome()}">Base de clientes</span>
+                                <span class="warn-pill" th:if="${!a.emUso()}">descontinuado</span></span>
+                            <span class="p-crit" th:text="'criticidade ' + ${a.criticidade()}">criticidade 5</span>
+                        </label>
+                    </li>
+                </ul>
+            </div>
+            <span class="err" th:if="${#fields.hasErrors('ativoIds')}" th:text="${#fields.errors('ativoIds')[0]}"></span>
+            <span class="hint" th:if="${opcoes.ativos().isEmpty()}">Nenhum ativo em uso no inventário. Cadastre um ativo primeiro.</span>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('ameacaId')} ? 'invalid'">
+            <label for="ameacaId">Ameaça <span class="hint">— o que pode acontecer</span></label>
+            <div class="with-add">
+                <select class="select" th:field="*{ameacaId}">
+                    <option value="">Escolha a ameaça</option>
+                    <option th:each="x : ${opcoes.ameacas()}" th:value="${x.id()}" th:text="${x.nome()}">Ransomware</option>
+                </select>
+                <button class="btn btn-ghost btn-sm" type="button" data-catalogo-abrir="ameaca">+ Nova</button>
+            </div>
+            <div class="add-inline" data-catalogo="ameaca" hidden>
+                <input class="input" placeholder="Nome da nova ameaça" aria-label="Nome da nova ameaça">
+                <button class="btn btn-primary btn-sm" type="button">Adicionar</button>
+            </div>
+            <span class="err" data-catalogo-erro="ameaca"></span>
+            <span class="err" th:if="${#fields.hasErrors('ameacaId')}" th:text="${#fields.errors('ameacaId')[0]}"></span>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('vulnerabilidadeId')} ? 'invalid'">
+            <label for="vulnerabilidadeId">Vulnerabilidade <span class="hint">— a fraqueza que a ameaça explora</span></label>
+            <div class="with-add">
+                <select class="select" th:field="*{vulnerabilidadeId}">
+                    <option value="">Escolha a vulnerabilidade</option>
+                    <option th:each="x : ${opcoes.vulnerabilidades()}" th:value="${x.id()}" th:text="${x.nome()}">Sem patch</option>
+                </select>
+                <button class="btn btn-ghost btn-sm" type="button" data-catalogo-abrir="vulnerabilidade">+ Nova</button>
+            </div>
+            <div class="add-inline" data-catalogo="vulnerabilidade" hidden>
+                <input class="input" placeholder="Nome da nova vulnerabilidade" aria-label="Nome da nova vulnerabilidade">
+                <button class="btn btn-primary btn-sm" type="button">Adicionar</button>
+            </div>
+            <span class="err" data-catalogo-erro="vulnerabilidade"></span>
+            <span class="err" th:if="${#fields.hasErrors('vulnerabilidadeId')}" th:text="${#fields.errors('vulnerabilidadeId')[0]}"></span>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('controles')} ? 'invalid'">
+            <label for="busca-controle">Controles do Anexo A (ISO 27001:2022)</label>
+            <div class="sel-ctrl" data-controles-escolhidos></div>
+            <div class="picker">
+                <input class="input" id="busca-controle" placeholder="Buscar por número ou nome (ex.: 8.13, backup)"
+                       autocomplete="off" data-filtra="#lista-controles">
+                <ul id="lista-controles">
+                    <th:block th:each="grupo : ${controlesPorTema}">
+                        <li class="grp-title" th:attr="data-grupo=${grupo.key}"
+                            th:text="${grupo.key} + ' · ' + ${grupo.value[0].rotuloTema()}">5 · Organizacionais</li>
+                        <li th:each="c : ${grupo.value}"
+                            th:attr="data-busca=${#strings.toLowerCase(c.rotulo())},data-grupo=${grupo.key}">
+                            <label>
+                                <input type="checkbox" th:field="*{controles}" th:value="${c.codigo()}" th:attr="data-rotulo=${c.rotulo()}">
+                                <span class="p-name"><b class="ctrl-num" th:text="${c.codigo()}">8.13</b><span th:text="${c.nome()}">Backup de informações</span></span>
+                                <span></span>
+                            </label>
+                        </li>
+                    </th:block>
+                </ul>
+            </div>
+            <span class="err" th:if="${#fields.hasErrors('controles')}" th:text="${#fields.errors('controles')[0]}"></span>
+            <span class="hint">Controles que tratam ou se relacionam a este risco.</span>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('donoId')} ? 'invalid'">
+            <label for="donoId">Dono do risco</label>
+            <select class="select" th:field="*{donoId}">
+                <option value="">Escolha um Gerente ou Analista</option>
+                <option th:each="d : ${opcoes.donos()}" th:value="${d.id()}"
+                        th:text="${d.nome()} + ' · ' + ${#strings.toLowerCase(d.perfil())}">Mariana Costa · gerente</option>
+            </select>
+            <span class="err" th:if="${#fields.hasErrors('donoId')}" th:text="${#fields.errors('donoId')[0]}"></span>
+            <span class="hint warn-text" th:if="${risco != null and risco.precisaNovoDono()}"
+                  th:text="'O dono atual (' + ${risco.donoNome()} + ') está inativo. Escolha outro.'"></span>
+            <span class="hint">Quem responde pelo risco. Sugerido: proprietário do primeiro ativo escolhido.</span>
+        </div>
+
+        <div class="sec">Avaliação · risco inerente</div>
+        <fieldset class="field" th:classappend="${#fields.hasErrors('probabilidade')} ? 'invalid'">
+            <legend>Probabilidade</legend>
+            <div class="escala">
+                <label th:each="n : ${probabilidades}">
+                    <input type="radio" th:field="*{probabilidade}" th:value="${n.valor()}">
+                    <b th:text="${n.valor()}">1</b><span th:text="${n.rotulo()}">Rara</span>
+                </label>
+            </div>
+            <span class="err" th:if="${#fields.hasErrors('probabilidade')}" th:text="${#fields.errors('probabilidade')[0]}"></span>
+        </fieldset>
+        <fieldset class="field" th:classappend="${#fields.hasErrors('impacto')} ? 'invalid'">
+            <legend>Impacto</legend>
+            <div class="escala">
+                <label th:each="n : ${impactos}">
+                    <input type="radio" th:field="*{impacto}" th:value="${n.valor()}">
+                    <b th:text="${n.valor()}">1</b><span th:text="${n.rotulo()}">Insignificante</span>
+                </label>
+            </div>
+            <div class="sugestao" data-sugestao hidden>
+                <span data-sugestao-texto></span>
+                <button type="button" data-sugestao-usar>Usar sugestão</button>
+            </div>
+            <span class="err" th:if="${#fields.hasErrors('impacto')}" th:text="${#fields.errors('impacto')[0]}"></span>
+        </fieldset>
+        <!-- faixas vêm do enum NivelRisco: o JS não repete a regra -->
+        <div class="resultado" data-resultado
+             th:attr="data-niveis=${#strings.listJoin(niveis.![name() + ':' + minimo + ':' + rotulo], ';')}">
+            <span class="calc" data-resultado-calc>Escolha probabilidade e impacto</span>
+            <span class="nivel" data-resultado-nivel>—</span>
+        </div>
+
+        <div class="sec">Tratamento</div>
+        <fieldset class="field">
+            <legend>Opção de tratamento</legend>
+            <div class="seg seg5">
+                <label th:attr="data-descricao='Ainda em análise.'">
+                    <input type="radio" th:field="*{tratamento}" value=""><span>A definir</span>
+                </label>
+                <label th:each="t : ${tratamentos}" th:attr="data-descricao=${t.descricao}">
+                    <input type="radio" th:field="*{tratamento}" th:value="${t}"><span th:text="${t.rotulo}">Mitigar</span>
+                </label>
+            </div>
+            <span class="hint" data-tratamento-hint></span>
+        </fieldset>
+    </div>
+
+    <div class="d-foot">
+        <button class="btn btn-ghost" type="button" data-drawer-fechar>Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar risco</button>
+    </div>
+</form>
+</body>
+</html>

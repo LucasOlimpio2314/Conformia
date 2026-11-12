@@ -6,10 +6,22 @@
 
 | | |
 |---|---|
-| Fase | Módulo **inventário de ativos** (web + API) implementado na branch `feature/backend-inventario` (criada a partir da `feature/backend-usuario`), aguardando commit do Lucas |
-| Próximo passo | Lucas commitar o inventário (`C:\Faculdade\commit-modulo-inventario.bat`) e abrir PR. Depois: **cadastro de risco** (matriz 5×5, ativo escolhido do inventário, impacto sugerido pela criticidade C-I-D) |
+| Fase | Módulo **riscos** (web + API) implementado na branch `feature/backend-risco`, aguardando commit do Lucas |
+| Próximo passo | Commitar (`C:\Faculdade\commit-modulo-risco.bat`) e juntar os PRs na ordem: usuário → inventário → risco. Depois: aceite formal (Gerente aceita riscos com tratamento "Aceitar") ou plano de ação (riscos "Mitigar") |
 
 ## Histórico
+
+### 2026-11-11 — Registro de riscos
+- Branch `feature/backend-risco` (criada em cima da `feature/backend-inventario`, commit `834462b`).
+- Protótipo aprovado após ajustes do Lucas: sem mapa de calor (só 4 cards por nível, clicáveis), sem coluna de situação (risco é ATIVO ou ENCERRADO), coluna "Controles (Anexo A)", ameaça e vulnerabilidade uma embaixo da outra.
+- `V3__cria_risco.sql`: catálogos `ameaca` (13 itens) e `vulnerabilidade` (12) com índice único em `lower(nome)`; `controle_anexo_a` com os 93 controles da ISO 27001:2022; `risco` + `risco_ativo` + `risco_controle`; sequência `risco_codigo_seq` (RSK-001).
+- Pacote `controle/` criado só com entidade + repository do Anexo A (base do futuro módulo "Controles do Anexo A").
+- Regras (`RiscoService`): ≥1 ativo em uso (na edição pode manter ativo já ligado que foi descontinuado → aviso "Ativo descontinuado"), ≥1 controle, dono Gerente/Analista ativo (aviso "Dono inativo"), probabilidade/impacto 1–5, tratamento opcional ("a definir"), encerrar com justificativa 10–500, encerrado não edita. Catálogos ampliados por Gerente/Analista pelo "+ Nova" (`CatalogoRiscoService`).
+- Sugestão de impacto = maior criticidade C-I-D entre os ativos (só sugere, botão "Usar sugestão"); dono sugerido = proprietário do 1º ativo.
+- Modal de justificativa virou genérico (`data-justificar-*`): usado no "descontinuar" do inventário e no "encerrar" do risco.
+- **Bug achado no E2E**: formulário do risco dava 413 — `FormData` vai como multipart e o Tomcat 11 limita o nº de partes; o `th:field` gera um `_controles` por checkbox (~100 partes). Corrigido no `postar()` do `app.js` enviando `URLSearchParams` (x-www-form-urlencoded). MockMvc não pega isso (não passa pelo Tomcat).
+- Testes: + `RiscoServiceTest` (13), `CatalogoRiscoServiceTest` (4), `NivelRiscoTest` (9), `RiscoWebIT` (9), `RiscoApiIT` (7). Total: 80 unitários + 66 integração. E2E no Chrome: criar (com "+ Nova" ameaça, busca de controle, sugestão de impacto), editar, filtros, encerrar.
+- Dado de teste no banco de desenvolvimento: RSK-001 (encerrado), ameaça "Exposição pública de backup".
 
 ### 2026-11-11 — E2E no Chrome + edição/ativação de usuários
 - E2E manual no Chrome (localhost:8080) cobrindo login, senha temporária, troca obrigatória (web e API), bloqueios por perfil, inventário (cadastro, erro de fornecedor, edição, descontinuar), Minha conta e tentativas do Auditor de alterar pela URL/API. Dados de teste no banco de desenvolvimento: usuários "E2E Analista" (desativado) e "E2E Auditor", ativo ATV-002 (descontinuado).
@@ -78,6 +90,8 @@
 | 2026-11-11 | `/usuarios` só GERENTE; "Minha conta" para todos; só gerente gera temporária e nunca para si mesmo | Própria senha se troca confirmando a atual |
 | 2026-11-11 | "Manter conectado" removido; sessão expira em 30 min | Menos superfície de ataque e menos segredo no `.env` |
 | 2026-11-11 | Gerente edita nome/e-mail e ativa/desativa usuários; não pode se desativar; desativado perde a sessão na hora | Pedido do Lucas após o E2E; evita sistema sem gerente e acesso "fantasma" |
+| 2026-11-11 | Risco: 1+ ativos, 1+ controles do Anexo A, catálogos de ameaça/vulnerabilidade ampliáveis por Gerente/Analista, só ATIVO/ENCERRADO | Pedido do Lucas no protótipo; controles amarram o risco à norma |
+| 2026-11-11 | Escalas: probabilidade Rara→Quase certa; impacto Insignificante→Catastrófico | Nomes mais usados em avaliações ISO 27005 |
 | 2026-11-11 | Inventário antes do risco; risco escolhe o ativo do inventário | Risco sempre ligado a um ativo real, sem texto solto |
 | 2026-11-11 | Matriz de risco 5×5 (níveis: Baixo 1–4, Médio 5–9, Alto 10–16, Crítico 17–25) | Mais usada em ISO 27001; mesma escala 1–5 da criticidade C-I-D |
 | 2026-11-11 | Riscos e ativos: Gerente e Analista alteram, Auditor só lê, nada é excluído (encerrar/descontinuar com justificativa) | Histórico preservado para auditoria |

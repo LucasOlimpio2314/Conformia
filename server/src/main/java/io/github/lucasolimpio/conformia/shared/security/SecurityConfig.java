@@ -42,6 +42,9 @@ public class SecurityConfig {
                         // inventário: todos leem; Auditor não altera
                         .requestMatchers(HttpMethod.GET, "/api/ativos/**").authenticated()
                         .requestMatchers("/api/ativos/**").hasAnyRole(EDITORES)
+                        // riscos: todos leem; Auditor não altera
+                        .requestMatchers(HttpMethod.GET, "/api/riscos/**").authenticated()
+                        .requestMatchers("/api/riscos/**").hasAnyRole(EDITORES)
                         .anyRequest().authenticated())
                 // CSRF desligado só na API: o ataque depende do navegador enviar o cookie
                 // de outro site. Aqui o cookie é SameSite=Lax (não vai em POST de outro site),
@@ -71,6 +74,8 @@ public class SecurityConfig {
                         // inventário: lista para todos; formulários e alterações só para editores
                         .requestMatchers(HttpMethod.GET, "/inventario").authenticated()
                         .requestMatchers("/inventario/**").hasAnyRole(EDITORES)
+                        .requestMatchers(HttpMethod.GET, "/riscos").authenticated()
+                        .requestMatchers("/riscos/**").hasAnyRole(EDITORES)
                         .anyRequest().authenticated())
                 .formLogin(form -> form
                         .loginPage("/login")

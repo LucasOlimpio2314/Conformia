@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Riscos')}"></head>
+<body>
+<div class="app">
+    <aside th:replace="~{fragments/layout :: sidebar('riscos')}"></aside>
+
+    <main class="main">
+        <div class="crumbs">Riskdesk / Riscos</div>
+        <div class="page-head">
+            <div>
+                <h1>Registro de riscos</h1>
+                <p>Riscos de segurança da informação sobre os ativos do inventário.
+                    <span class="ctrl-ref">· 6.1.2 Avaliação · 6.1.3 Tratamento · 8.2</span></p>
+            </div>
+            <button class="btn btn-primary" type="button" sec:authorize="hasAnyRole('GERENTE','ANALISTA')"
+                    th:attr="data-drawer-url=@{/riscos/novo/form}">+ Novo risco</button>
+            <span class="readonly-note" sec:authorize="hasRole('AUDITOR')">Modo leitura: perfil Auditor</span>
+        </div>
+
+        <!-- Cards por nível (riscos ativos). Clicar filtra a lista. -->
+        <section aria-label="Riscos ativos por nível">
+            <div class="kpis" role="group" aria-label="Filtrar por nível">
+                <button type="button" class="kpi" th:each="n : ${niveis}" th:classappend="'k-' + ${n}"
+                        th:attr="data-filtro-nivel=${n}" aria-pressed="false">
+                    <span th:text="${n.rotulo}">Crítico</span>
+                    <b th:text="${porNivel.get(n)}">0</b>
+                    <small th:text="'nível ' + ${n.faixa}">nível 17–25</small>
+                </button>
+            </div>
+            <p class="kpi-note">Riscos ativos · nível = probabilidade × impacto · clique num card para filtrar</p>
+        </section>
+
+        <section class="panel">
+            <div class="toolbar">
+                <label class="search">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.25" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input class="input" id="busca" type="search" placeholder="Buscar por código, título, ameaça, ativo ou controle" aria-label="Buscar risco">
+                </label>
+                <div class="grp">
+                    <select class="select" id="filtro-nivel" aria-label="Nível">
+                        <option value="">Todos os níveis</option>
+                        <option th:each="n : ${niveis}" th:value="${n}" th:text="${n.rotulo}">Crítico</option>
+                    </select>
+                    <select class="select" id="filtro-situacao-risco" aria-label="Situação">
+                        <option value="ATIVO">Riscos ativos</option>
+                        <option value="ENCERRADO">Encerrados</option>
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table id="tabela-riscos" class="tabela-riscos">
+                    <thead>
+                    <tr><th>Código</th><th>Risco</th><th>Ativos</th><th>Controles (Anexo A)</th><th>Dono do risco</th><th>Nível</th><th>Tratamento</th><th><span class="sr-only">Ações</span></th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="r : ${riscos}"
+                        th:attr="data-nivel=${r.nivel()},data-situacao=${r.situacao()},data-busca=${r.textoBusca()}"
+                        th:classappend="${(r.ativo() ? '' : 'encerrado ') + (r.codigo() == destaque ? 'new' : '')}">
+                        <td class="code" th:text="${r.codigo()}">RSK-001</td>
+                        <td>
+                            <div class="risk">
+                                <b th:text="${r.titulo()}">Sequestro de dados do ERP</b>
+                                <span th:text="'Ameaça: ' + ${r.ameaca().nome()}">Ameaça: Ransomware</span>
+                                <span th:text="'Vulnerabilidade: ' + ${r.vulnerabilidade().nome()}">Vulnerabilidade: Sem patch</span>
+                                <span th:if="${!r.ativo()}" th:text="'Encerrado: ' + ${r.justificativaEncerramento()}"></span>
+                                <span class="warn-pill" th:if="${r.temAtivoDescontinuado()}"
+                                      title="Revise o risco: remova o ativo ou encerre o risco">Ativo descontinuado</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="chips">
+                                <span class="achip" th:each="a : ${r.ativos()}" th:classappend="${!a.emUso()} ? 'off'"
+                                      th:attr="title=${a.nome()} + (${a.emUso()} ? '' : ' (descontinuado)')">
+                                    <b th:text="${a.codigo()}">ATV-001</b><span th:text="${a.nome()}">Base de clientes</span>
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="chips">
+                                <span class="ctrl" th:each="c : ${r.controles()}" th:text="${c.codigo()}" th:attr="title=${c.rotulo()}">8.13</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="owner" th:classappend="${!r.donoAtivo()} ? 'inativo'">
+                                <span class="avatar" th:text="${r.iniciaisDono()}">MC</span>
+                                <span th:text="${r.donoNome()}">Mariana Costa</span>
+                                <span class="warn-pill" th:if="${r.precisaNovoDono()}">Dono inativo</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="nivel" th:classappend="'n-' + ${r.nivel()}"
+                                  th:attr="title='Probabilidade ' + ${r.probabilidade()} + ' (' + ${r.rotuloProbabilidade()} + ') × Impacto ' + ${r.impacto()} + ' (' + ${r.rotuloImpacto()} + ')'">
+                                <span th:text="${r.nivel().rotulo}">Crítico</span>
+                                <small th:text="${r.probabilidade()} + '×' + ${r.impacto()} + '=' + ${r.valor()}">4×5=20</small>
+                            </span>
+                        </td>
+                        <td>
+                            <span class="trat" th:if="${r.tratamento() != null}" th:text="${r.tratamento().rotulo}">Mitigar</span>
+                            <span class="trat def" th:if="${r.tratamento() == null}">A definir</span>
+                        </td>
+                        <td>
+                            <div class="row-acts" sec:authorize="hasAnyRole('GERENTE','ANALISTA')" th:if="${r.ativo()}">
+                                <button class="row-act" type="button" th:attr="data-drawer-url=@{/riscos/{id}/form(id=${r.id()})}">Editar</button>
+                                <button class="row-act danger" type="button"
+                                        th:attr="data-justificar-url=@{/riscos/{id}/encerrar(id=${r.id()})},data-justificar-codigo=${r.codigo()}">Encerrar</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr id="sem-resultado" hidden><td colspan="8" class="empty">Nenhum risco com esses filtros.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="foot"><span id="contador"></span><span>Ordenado do maior para o menor nível</span></div>
+        </section>
+    </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer drawer-xl" id="drawer" role="dialog" aria-modal="true" aria-label="Risco" aria-hidden="true"></aside>
+
+<!-- Modal: encerrar risco (mesmo mecanismo do "descontinuar" do inventário) -->
+<div class="modal-scrim" id="modal-justificativa" hidden sec:authorize="hasAnyRole('GERENTE','ANALISTA')">
+    <form class="modal modal-form" role="dialog" aria-modal="true" aria-labelledby="just-titulo" novalidate>
+        <h3 id="just-titulo">Encerrar <span data-justificar-alvo></span>?</h3>
+        <p>O risco sai do registro ativo, mas não é apagado: continua consultável no filtro "Encerrados" para auditoria.</p>
+        <div class="field" data-justificar-campo>
+            <label for="justificativa">Justificativa</label>
+            <textarea class="textarea" id="justificativa" name="justificativa"
+                      placeholder="Ex.: ativo descontinuado em 10/11/2026; o cenário deixou de existir"></textarea>
+            <span class="err" data-justificar-erro></span>
+        </div>
+        <div class="m-actions">
+            <button class="btn btn-ghost" type="button" data-justificar-fechar>Cancelar</button>
+            <button class="btn btn-danger" type="submit">Encerrar risco</button>
+        </div>
+    </form>
+</div>
+
+<div th:replace="~{fragments/layout :: toast}"></div>
+</body>
+</html>

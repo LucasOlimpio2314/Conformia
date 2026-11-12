@@ -14,11 +14,14 @@
   }
 
   // ---------- fetch com token CSRF (Spring Security exige em POST) ----------
+  // FormData vira URLSearchParams (x-www-form-urlencoded): enviado como multipart, o Tomcat 11
+  // recusa (413) formulários com muitas partes — o do risco tem ~100 (um marcador por checkbox).
   function postar(url, body) {
     const headers = { "X-Requested-With": "fetch" };
     const token = $('meta[name="_csrf"]'), header = $('meta[name="_csrf_header"]');
     if (token && header) headers[header.content] = token.content;
-    return fetch(url, { method: "POST", body, headers });
+    const corpo = body instanceof FormData ? new URLSearchParams(body) : body;
+    return fetch(url, { method: "POST", body: corpo, headers });
   }
 
   // ---------- mostrar/ocultar senha ----------
@@ -89,6 +92,7 @@
     if (!resp.ok) { toast(await resp.text() || "Não foi possível abrir o formulário."); return; }
     drawer.innerHTML = await resp.text();
     prepararFormAtivo();
+    prepararFormRisco();
     drawer.classList.add("open");
     scrim.classList.add("open");
     drawer.setAttribute("aria-hidden", "false");
@@ -110,6 +114,7 @@
     scrim.addEventListener("click", fecharDrawer);
     drawer.addEventListener("click", e => { if (e.target.closest("[data-drawer-fechar]")) fecharDrawer(); });
     drawer.addEventListener("change", prepararFormAtivo);
+    drawer.addEventListener("change", () => prepararFormRisco());
 
     // envio do formulário:
     // 422 = volta o form com erros; X-Redirect = salvou, recarrega; 200 = senha temporária (usuários)
@@ -125,6 +130,7 @@
         if (resp.status === 422) {
           drawer.innerHTML = html;
           prepararFormAtivo();
+          prepararFormRisco();
           const erro = $(".invalid input, .invalid select, .alert", drawer);
           if (erro) erro.focus?.();
           return;
@@ -186,33 +192,148 @@
     filtrar(); // começa mostrando só os ativos em uso
   }
 
-  // ---------- inventário: modal de descontinuar ----------
-  const modalDesc = $("#modal-descontinuar");
-  if (modalDesc) {
-    const form = $("form", modalDesc);
+  // ---------- modal de justificativa (descontinuar ativo, encerrar risco) ----------
+  // Botão com data-justificar-url abre o modal; sucesso = X-Redirect; erro = texto (422) no campo.
+  const modalJust = $("#modal-justificativa");
+  if (modalJust) {
+    const form = $("form", modalJust), campo = $("[data-justificar-campo]", modalJust);
     let url = null;
-    const fechar = () => { modalDesc.hidden = true; };
+    const fechar = () => { modalJust.hidden = true; };
     document.addEventListener("click", e => {
-      const b = e.target.closest("[data-descontinuar-url]");
+      const b = e.target.closest("[data-justificar-url]");
       if (b) {
-        url = b.dataset.descontinuarUrl;
-        $("#desc-codigo").textContent = b.dataset.descontinuarCodigo;
+        url = b.dataset.justificarUrl;
+        $("[data-justificar-alvo]", modalJust).textContent = b.dataset.justificarCodigo;
         form.reset();
-        $("#f-justificativa").classList.remove("invalid");
-        $("#justificativa-erro").textContent = "";
-        modalDesc.hidden = false;
-        $("#justificativa").focus();
+        campo.classList.remove("invalid");
+        $("[data-justificar-erro]", modalJust).textContent = "";
+        modalJust.hidden = false;
+        $("textarea", modalJust).focus();
       }
-      if (e.target.closest("[data-fechar-descontinuar]")) fechar();
+      if (e.target.closest("[data-justificar-fechar]")) fechar();
     });
-    document.addEventListener("keydown", e => { if (e.key === "Escape" && !modalDesc.hidden) fechar(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && !modalJust.hidden) fechar(); });
     form.addEventListener("submit", async e => {
       e.preventDefault();
       const resp = await postar(url, new FormData(form));
       const destino = resp.headers.get("X-Redirect");
       if (resp.ok && destino) { location.href = destino; return; }
-      $("#f-justificativa").classList.add("invalid");
-      $("#justificativa-erro").textContent = await resp.text();
+      campo.classList.add("invalid");
+      $("[data-justificar-erro]", modalJust).textContent = await resp.text();
+    });
+  }
+
+  // ---------- riscos: filtros da lista (cards de nível + select) ----------
+  const tabelaRiscos = $("#tabela-riscos");
+  if (tabelaRiscos) {
+    const selNivel = $("#filtro-nivel"), selSit = $("#filtro-situacao-risco");
+    const filtrar = () => {
+      const q = $("#busca").value.trim().toLowerCase(), nivel = selNivel.value, sit = selSit.value;
+      const linhas = $$("tbody tr[data-nivel]", tabelaRiscos);
+      let visiveis = 0;
+      linhas.forEach(tr => {
+        const ok = (!nivel || tr.dataset.nivel === nivel) && (!sit || tr.dataset.situacao === sit)
+          && (!q || tr.dataset.busca.includes(q));
+        tr.hidden = !ok;
+        if (ok) visiveis++;
+      });
+      $$("[data-filtro-nivel]").forEach(c => c.setAttribute("aria-pressed", c.dataset.filtroNivel === nivel));
+      $("#sem-resultado").hidden = visiveis > 0;
+      $("#contador").textContent = `${visiveis} riscos exibidos`;
+    };
+    $$("[data-filtro-nivel]").forEach(c => c.addEventListener("click", () => {
+      selNivel.value = selNivel.value === c.dataset.filtroNivel ? "" : c.dataset.filtroNivel;
+      filtrar();
+    }));
+    $("#busca").addEventListener("input", filtrar);
+    selNivel.addEventListener("change", filtrar);
+    selSit.addEventListener("change", filtrar);
+    filtrar(); // começa mostrando só os riscos ativos
+  }
+
+  // ---------- riscos: comportamento do formulário ----------
+  const ROTULO_IMPACTO = { 1: "Insignificante", 2: "Menor", 3: "Moderado", 4: "Maior", 5: "Catastrófico" };
+  function prepararFormRisco() {
+    const form = drawer && $("[data-form-risco]", drawer);
+    if (!form) return;
+    const nota = n => +($(`input[name="${n}"]:checked`, form)?.value || 0);
+
+    // nível = P × I, com as faixas que vieram do servidor (enum NivelRisco)
+    const faixas = $("[data-resultado]", form).dataset.niveis.split(";").map(s => s.split(":"));
+    const p = nota("probabilidade"), i = nota("impacto"), v = p * i;
+    const faixa = v ? faixas.find(f => v >= +f[1]) : null;
+    $("[data-resultado-calc]", form).textContent = v ? `${p} × ${i} = ${v}` : "Escolha probabilidade e impacto";
+    const etiqueta = $("[data-resultado-nivel]", form);
+    etiqueta.className = "nivel" + (faixa ? " n-" + faixa[0] : "");
+    etiqueta.textContent = faixa ? faixa[2] : "—";
+
+    // sugestão de impacto = maior criticidade entre os ativos marcados
+    const marcados = $$("#lista-ativos input:checked", form);
+    const sugestao = $("[data-sugestao]", form);
+    if (marcados.length) {
+      const maior = marcados.reduce((m, x) => +x.dataset.criticidade > +m.dataset.criticidade ? x : m);
+      const crit = +maior.dataset.criticidade;
+      sugestao.hidden = false;
+      $("[data-sugestao-texto]", form).textContent =
+        `Sugestão: impacto ${crit} (${ROTULO_IMPACTO[crit]}) — maior criticidade entre os ativos (${maior.dataset.codigo}).`;
+      $("[data-sugestao-usar]", form).onclick = () => {
+        $(`input[name="impacto"][value="${crit}"]`, form).checked = true;
+        prepararFormRisco();
+      };
+      // dono sugerido: proprietário do primeiro ativo, se ainda não escolhido e se estiver na lista
+      const dono = $("#donoId", form);
+      if (!dono.value && $(`option[value="${marcados[0].dataset.proprietario}"]`, dono)) dono.value = marcados[0].dataset.proprietario;
+    } else {
+      sugestao.hidden = true;
+    }
+
+    // controles escolhidos viram etiquetas acima da lista
+    $("[data-controles-escolhidos]", form).innerHTML = $$("#lista-controles input:checked", form)
+      .map(c => `<span class="ctrl">${c.dataset.rotulo.replace(/[&<>"]/g, "")}</span>`).join("");
+
+    // tratamento: "A definir" quando nada escolhido + explicação da opção
+    if (!$('input[name="tratamento"]:checked', form)) $('input[name="tratamento"][value=""]', form).checked = true;
+    $("[data-tratamento-hint]", form).textContent = $('input[name="tratamento"]:checked', form).closest("label").dataset.descricao;
+  }
+
+  if (drawer) {
+    // filtro dos seletores (ativos e controles); marcados sempre aparecem
+    drawer.addEventListener("input", e => {
+      const busca = e.target.closest("[data-filtra]");
+      if (!busca) return;
+      const q = busca.value.trim().toLowerCase(), lista = $(busca.dataset.filtra, drawer);
+      $$("li[data-busca]", lista).forEach(li =>
+        li.hidden = !!q && !li.dataset.busca.includes(q) && !$("input", li).checked);
+      $$("li.grp-title", lista).forEach(t =>
+        t.hidden = !$$(`li[data-busca][data-grupo="${t.dataset.grupo}"]`, lista).some(li => !li.hidden));
+    });
+
+    // "+ Nova" ameaça/vulnerabilidade: cadastra no catálogo e já seleciona
+    drawer.addEventListener("click", async e => {
+      const abrir = e.target.closest("[data-catalogo-abrir]");
+      if (abrir) {
+        const caixa = $(`[data-catalogo="${abrir.dataset.catalogoAbrir}"]`, drawer);
+        caixa.hidden = !caixa.hidden;
+        if (!caixa.hidden) $("input", caixa).focus();
+        return;
+      }
+      const caixa = e.target.closest("[data-catalogo]");
+      if (!caixa || !e.target.closest("button")) return;
+      const tipo = caixa.dataset.catalogo, form = $("[data-form-risco]", drawer);
+      const url = tipo === "ameaca" ? form.dataset.urlAmeaca : form.dataset.urlVulnerabilidade;
+      const corpo = new FormData();
+      corpo.append("nome", $("input", caixa).value);
+      const resp = await postar(url, corpo);
+      const json = await resp.json();
+      const erro = $(`[data-catalogo-erro="${tipo}"]`, drawer);
+      if (!resp.ok) { erro.textContent = json.mensagem; caixa.closest(".field").classList.add("invalid"); return; }
+      const select = $(tipo === "ameaca" ? "#ameacaId" : "#vulnerabilidadeId", drawer);
+      select.add(new Option(json.nome, json.id, true, true));
+      erro.textContent = "";
+      caixa.closest(".field").classList.remove("invalid");
+      $("input", caixa).value = "";
+      caixa.hidden = true;
+      toast(`"${json.nome}" adicionada ao catálogo`);
     });
   }
 

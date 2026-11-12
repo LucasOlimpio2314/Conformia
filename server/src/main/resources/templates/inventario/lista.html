@@ -79,7 +79,7 @@
                             <div class="row-acts" sec:authorize="hasAnyRole('GERENTE','ANALISTA')" th:if="${a.emUso()}">
                                 <button class="row-act" type="button" th:attr="data-drawer-url=@{/inventario/{id}/form(id=${a.id()})}">Editar</button>
                                 <button class="row-act danger" type="button"
-                                        th:attr="data-descontinuar-url=@{/inventario/{id}/descontinuar(id=${a.id()})},data-descontinuar-codigo=${a.codigo()}">Descontinuar</button>
+                                        th:attr="data-justificar-url=@{/inventario/{id}/descontinuar(id=${a.id()})},data-justificar-codigo=${a.codigo()}">Descontinuar</button>
                             </div>
                         </td>
                     </tr>
@@ -100,18 +100,18 @@
 <aside class="drawer drawer-lg" id="drawer" role="dialog" aria-modal="true" aria-label="Ativo" aria-hidden="true"></aside>
 
 <!-- Modal: descontinuar ativo -->
-<div class="modal-scrim" id="modal-descontinuar" hidden sec:authorize="hasAnyRole('GERENTE','ANALISTA')">
+<div class="modal-scrim" id="modal-justificativa" hidden sec:authorize="hasAnyRole('GERENTE','ANALISTA')">
     <form class="modal modal-form" role="dialog" aria-modal="true" aria-labelledby="desc-titulo" novalidate>
-        <h3 id="desc-titulo">Descontinuar <span id="desc-codigo"></span>?</h3>
+        <h3 id="desc-titulo">Descontinuar <span data-justificar-alvo></span>?</h3>
         <p>O ativo sai do inventário em uso, mas não é apagado: o histórico e os riscos ligados a ele continuam disponíveis para auditoria.</p>
-        <div class="field" id="f-justificativa">
+        <div class="field" data-justificar-campo>
             <label for="justificativa">Justificativa</label>
             <textarea class="textarea" id="justificativa" name="justificativa"
                       placeholder="Ex.: servidor desligado e descartado em 10/11/2026, discos destruídos"></textarea>
-            <span class="err" id="justificativa-erro"></span>
+            <span class="err" data-justificar-erro></span>
         </div>
         <div class="m-actions">
-            <button class="btn btn-ghost" type="button" data-fechar-descontinuar>Cancelar</button>
+            <button class="btn btn-ghost" type="button" data-justificar-fechar>Cancelar</button>
             <button class="btn btn-danger" type="submit">Descontinuar</button>
         </div>
     </form>

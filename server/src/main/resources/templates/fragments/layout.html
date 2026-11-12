@@ -26,7 +26,8 @@
         <div class="nav-label">Riskdesk</div>
         <a th:href="@{/inventario}" th:classappend="${ativo == 'inventario'} ? 'active'"
            th:attr="aria-current=${ativo == 'inventario'} ? 'page'">Inventário de ativos</a>
-        <a href="#" class="soon" aria-disabled="true">Riscos <small>próximo</small></a>
+        <a th:href="@{/riscos}" th:classappend="${ativo == 'riscos'} ? 'active'"
+           th:attr="aria-current=${ativo == 'riscos'} ? 'page'">Riscos</a>
         <a href="#" class="soon" aria-disabled="true">Aceites formais <small>em breve</small></a>
         <a href="#" class="soon" aria-disabled="true">Plano de ação <small>em breve</small></a>
         <a href="#" class="soon" aria-disabled="true">Controles do Anexo A <small>em breve</small></a>
