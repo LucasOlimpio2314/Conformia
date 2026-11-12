@@ -2,6 +2,7 @@ package io.github.lucasolimpio.conformia.usuario.service;
 
 import io.github.lucasolimpio.conformia.shared.exception.RegraNegocioException;
 import io.github.lucasolimpio.conformia.usuario.domain.Usuario;
+import io.github.lucasolimpio.conformia.usuario.dto.EdicaoUsuarioForm;
 import io.github.lucasolimpio.conformia.usuario.dto.NovoUsuarioForm;
 import io.github.lucasolimpio.conformia.usuario.dto.SenhaTemporariaGerada;
 import io.github.lucasolimpio.conformia.usuario.dto.TrocaSenhaForm;
@@ -67,6 +68,29 @@ public class UsuarioService {
                 passwordEncoder.encode(senha), agora.plus(VALIDADE_SENHA_TEMPORARIA), agora);
         repository.save(usuario);
         return new SenhaTemporariaGerada(usuario.getId(), usuario.getNome(), senha);
+    }
+
+    /** Gerente corrige nome/e-mail e ativa ou desativa um usuário. */
+    public UsuarioResumo editar(Long usuarioId, EdicaoUsuarioForm form, Long solicitanteId) {
+        exigirGerente(solicitanteId);
+        Usuario usuario = carregar(usuarioId);
+
+        String email = form.email().trim().toLowerCase(Locale.ROOT);
+        if (repository.existsByEmailAndIdNot(email, usuarioId)) {
+            throw new RegraNegocioException("email", "Já existe outro usuário com este e-mail.");
+        }
+        if (usuarioId.equals(solicitanteId) && !form.ativo()) {
+            throw new RegraNegocioException("ativo", "Você não pode desativar o seu próprio acesso.");
+        }
+
+        usuario.atualizarDados(form.nome().trim(), email);
+        usuario.definirAtivo(form.ativo());
+        return UsuarioResumo.de(usuario);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean estaAtivo(Long usuarioId) {
+        return repository.existsByIdAndAtivoTrue(usuarioId);
     }
 
     public SenhaTemporariaGerada redefinirSenha(Long usuarioId, Long solicitanteId) {

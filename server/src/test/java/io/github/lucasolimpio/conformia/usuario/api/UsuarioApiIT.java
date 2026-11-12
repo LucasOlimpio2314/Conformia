@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
  * Integração da API do app: aplicação inteira + conformia_test.
@@ -240,5 +241,60 @@ class UsuarioApiIT {
 
         // Assert
         assertThat(resultado.getResponse().getStatus()).isEqualTo(204);
+    }
+    // ---------- editar / ativar / desativar ----------
+
+    @Test
+    void deveEditarEDesativarUsuarioPelaApi() throws Exception {
+        // Arrange
+        String json = "{\"nome\":\"Rafael Nunes Silva\",\"email\":\"rafael.api@empresa.com\",\"ativo\":false}";
+
+        // Act
+        MvcResult resultado = mvc.perform(put("/api/usuarios/" + analistaLogado.getId()).with(user(gerenteLogado))
+                .contentType(MediaType.APPLICATION_JSON).content(json)).andReturn();
+
+        // Assert
+        assertThat(resultado.getResponse().getStatus()).isEqualTo(200);
+        assertThat(corpo(resultado)).contains("\"nome\":\"Rafael Nunes Silva\"", "\"ativo\":false", "\"situacao\":\"INATIVO\"");
+    }
+
+    @Test
+    void deveExigirOCampoAtivoNaEdicaoPelaApi() throws Exception {
+        // Arrange — sem "ativo": não pode desativar ninguém por omissão
+        String json = "{\"nome\":\"Rafael Nunes\",\"email\":\"rafael.api@empresa.com\"}";
+
+        // Act
+        MvcResult resultado = mvc.perform(put("/api/usuarios/" + analistaLogado.getId()).with(user(gerenteLogado))
+                .contentType(MediaType.APPLICATION_JSON).content(json)).andReturn();
+
+        // Assert
+        assertThat(resultado.getResponse().getStatus()).isEqualTo(400);
+        assertThat(corpo(resultado)).contains("\"ativo\"");
+    }
+
+    @Test
+    void deveCriarUsuarioAtivoQuandoOCampoAtivoForOmitido() throws Exception {
+        // Arrange — JSON sem "ativo"
+        String json = "{\"nome\":\"Paula Api\",\"email\":\"paula.api@empresa.com\",\"perfil\":\"ANALISTA\"}";
+
+        // Act
+        mvc.perform(post("/api/usuarios").with(user(gerenteLogado))
+                .contentType(MediaType.APPLICATION_JSON).content(json));
+
+        // Assert
+        assertThat(repository.findByEmail("paula.api@empresa.com").orElseThrow().isAtivo()).isTrue();
+    }
+
+    @Test
+    void deveResponder401QuandoUsuarioFoiDesativadoComSessaoAberta() throws Exception {
+        // Arrange
+        repository.findById(analistaLogado.getId()).orElseThrow().definirAtivo(false);
+
+        // Act
+        MvcResult resultado = mvc.perform(get("/api/minha-conta").with(user(analistaLogado))).andReturn();
+
+        // Assert
+        assertThat(resultado.getResponse().getStatus()).isEqualTo(401);
+        assertThat(corpo(resultado)).contains("\"codigo\":\"USUARIO_INATIVO\"");
     }
 }

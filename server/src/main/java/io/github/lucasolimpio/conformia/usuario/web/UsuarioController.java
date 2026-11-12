@@ -1,11 +1,14 @@
 package io.github.lucasolimpio.conformia.usuario.web;
 
 import io.github.lucasolimpio.conformia.shared.exception.RegraNegocioException;
+import io.github.lucasolimpio.conformia.shared.security.SessaoUsuario;
 import io.github.lucasolimpio.conformia.shared.security.UsuarioLogado;
 import io.github.lucasolimpio.conformia.usuario.domain.Perfil;
+import io.github.lucasolimpio.conformia.usuario.dto.EdicaoUsuarioForm;
 import io.github.lucasolimpio.conformia.usuario.dto.NovoUsuarioForm;
 import io.github.lucasolimpio.conformia.usuario.dto.UsuarioResumo;
 import io.github.lucasolimpio.conformia.usuario.service.UsuarioService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,20 +39,62 @@ public class UsuarioController {
     private static final int STATUS_FORM_INVALIDO = 422;
 
     private final UsuarioService usuarioService;
+    private final SessaoUsuario sessaoUsuario;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(UsuarioService usuarioService, SessaoUsuario sessaoUsuario) {
         this.usuarioService = usuarioService;
+        this.sessaoUsuario = sessaoUsuario;
     }
 
+    /** ?novo= (criado) e ?editado= (salvo) destacam a linha; editado também mostra o aviso. */
     @GetMapping
-    public String lista(@RequestParam(required = false) Long novo, Model model) {
+    public String lista(@RequestParam(required = false) Long novo,
+                        @RequestParam(required = false) Long editado, Model model) {
         List<UsuarioResumo> usuarios = usuarioService.listar();
         Map<String, Long> contagem = Arrays.stream(Perfil.values()).collect(Collectors.toMap(Perfil::name,
                 p -> usuarios.stream().filter(u -> u.perfil() == p).count()));
         model.addAttribute("usuarios", usuarios);
         model.addAttribute("contagem", contagem);
-        model.addAttribute("novoId", novo);
+        model.addAttribute("novoId", novo != null ? novo : editado);
+        if (editado != null) {
+            usuarios.stream().filter(u -> u.id().equals(editado)).findFirst()
+                    .ifPresent(u -> model.addAttribute("toast", u.primeiroNome() + ": alterações salvas."));
+        }
         return "usuarios/lista";
+    }
+
+    @GetMapping("/{id}/form")
+    public String formEdicao(@PathVariable Long id, @AuthenticationPrincipal UsuarioLogado eu, Model model) {
+        UsuarioResumo usuario = usuarioService.buscar(id);
+        model.addAttribute("form", EdicaoUsuarioForm.de(usuario));
+        return formularioEdicao(usuario, eu, model);
+    }
+
+    /** Sucesso: X-Redirect (o app.js recarrega a lista). Erro: drawer com 422. */
+    @PostMapping("/{id}")
+    public String editar(@PathVariable Long id, @Valid @ModelAttribute("form") EdicaoUsuarioForm form,
+                         BindingResult erros, @AuthenticationPrincipal UsuarioLogado eu, Model model,
+                         HttpServletRequest request, HttpServletResponse response) {
+        if (!erros.hasErrors()) {
+            try {
+                UsuarioResumo salvo = usuarioService.editar(id, form, eu.getId());
+                if (id.equals(eu.getId())) {
+                    sessaoUsuario.recarregar(salvo.email(), request, response); // nome novo no menu lateral
+                }
+                response.setHeader("X-Redirect", "/usuarios?editado=" + id);
+                return "fragments/layout :: vazio";
+            } catch (RegraNegocioException e) {
+                rejeitar(erros, e);
+            }
+        }
+        response.setStatus(STATUS_FORM_INVALIDO);
+        return formularioEdicao(usuarioService.buscar(id), eu, model);
+    }
+
+    private String formularioEdicao(UsuarioResumo usuario, UsuarioLogado eu, Model model) {
+        model.addAttribute("usuario", usuario);
+        model.addAttribute("proprio", usuario.id().equals(eu.getId()));
+        return "usuarios/edicao :: drawer";
     }
 
     @GetMapping("/novo/form")

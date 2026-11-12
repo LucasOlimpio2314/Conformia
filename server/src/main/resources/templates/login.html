@@ -28,6 +28,9 @@
             <div class="alert alert-err" role="alert" th:if="${param.expirada}">
                 Sua senha temporária expirou. Peça uma nova a um Gerente.
             </div>
+            <div class="alert alert-err" role="alert" th:if="${param.desativado}">
+                Seu acesso foi desativado. Fale com um Gerente.
+            </div>
             <div class="alert alert-info" role="status" th:if="${param.saiu}">Você saiu da sessão.</div>
 
             <div class="field">

@@ -3,7 +3,7 @@
 <body>
 <!-- Fragmento carregado no drawer. Em caso de erro de validação o servidor
      devolve este mesmo fragmento (status 422) já com as mensagens. -->
-<form th:fragment="drawer" th:action="@{/usuarios}" th:object="${form}" method="post" novalidate data-form-usuario>
+<form th:fragment="drawer" th:action="@{/usuarios}" th:object="${form}" method="post" novalidate data-form-drawer data-form-usuario>
     <div class="d-head">
         <div><h2>Novo usuário</h2><p>O acesso fica disponível assim que salvar.</p></div>
         <button class="x" type="button" data-drawer-fechar aria-label="Fechar">×</button>

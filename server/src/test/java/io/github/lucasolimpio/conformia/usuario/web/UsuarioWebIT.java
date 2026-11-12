@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Locale;
 
@@ -167,6 +168,22 @@ class UsuarioWebIT {
     }
 
     @Test
+    void deveCriarUsuarioAtivoQuandoAChaveAcessoAtivoEstiverLigada() throws Exception {
+        // Arrange — o navegador manda o valor do checkbox E o marcador "_ativo" do Thymeleaf
+
+        // Act
+        mvc.perform(post("/usuarios").with(user(gerenteLogado)).with(csrf())
+                .param("nome", "Paula Ativa")
+                .param("email", "paula.ativa.it@empresa.com")
+                .param("perfil", "ANALISTA")
+                .param("ativo", "true")
+                .param("_ativo", "on"));
+
+        // Assert
+        assertThat(repository.findByEmail("paula.ativa.it@empresa.com").orElseThrow().isAtivo()).isTrue();
+    }
+
+    @Test
     void deveDevolverFormularioComErroQuandoEmailJaExistir() throws Exception {
         // Arrange — e-mail do analista criado no setUp
 
@@ -193,5 +210,62 @@ class UsuarioWebIT {
         // Assert
         assertThat(resultado.getResponse().getStatus()).isEqualTo(200);
         assertThat(resultado.getResponse().getContentAsString()).contains("Minha conta", "rafael.it@empresa.com");
+    }
+    @Test
+    void deveCriarUsuarioInativoQuandoAChaveAcessoAtivoEstiverDesligada() throws Exception {
+        // Arrange — checkbox desmarcado: só o marcador "_ativo" é enviado
+
+        // Act
+        mvc.perform(post("/usuarios").with(user(gerenteLogado)).with(csrf())
+                .param("nome", "Paula Inativa")
+                .param("email", "paula.inativa.it@empresa.com")
+                .param("perfil", "ANALISTA")
+                .param("_ativo", "on"));
+
+        // Assert
+        assertThat(repository.findByEmail("paula.inativa.it@empresa.com").orElseThrow().isAtivo()).isFalse();
+    }
+
+    @Test
+    void deveDesativarUsuarioPeloDrawerDeEdicao() throws Exception {
+        // Arrange — analista do setUp; chave desmarcada
+        Long id = analistaLogado.getId();
+
+        // Act
+        MvcResult resultado = mvc.perform(post("/usuarios/" + id).with(user(gerenteLogado)).with(csrf())
+                .param("nome", "Rafael Nunes Silva")
+                .param("email", "rafael.it@empresa.com")
+                .param("_ativo", "on")).andReturn();
+
+        // Assert
+        assertThat(resultado.getResponse().getHeader("X-Redirect")).isEqualTo("/usuarios?editado=" + id);
+        Usuario editado = repository.findById(id).orElseThrow();
+        assertThat(editado.isAtivo()).isFalse();
+        assertThat(editado.getNome()).isEqualTo("Rafael Nunes Silva");
+    }
+
+    @Test
+    void deveAbrirEdicaoDaPropriaContaSemAChaveDeDesativar() throws Exception {
+        // Arrange — gerente editando a si mesmo
+
+        // Act
+        MvcResult resultado = mvc.perform(get("/usuarios/" + gerenteLogado.getId() + "/form")
+                .with(user(gerenteLogado))).andReturn();
+
+        // Assert
+        assertThat(resultado.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .contains("Esta é a sua conta").doesNotContain("type=\"checkbox\"");
+    }
+
+    @Test
+    void deveEncerrarASessaoDeUsuarioDesativado() throws Exception {
+        // Arrange — sessão aberta de alguém que foi desativado depois do login
+        repository.findById(analistaLogado.getId()).orElseThrow().definirAtivo(false);
+
+        // Act
+        MvcResult resultado = mvc.perform(get("/inventario").with(user(analistaLogado))).andReturn();
+
+        // Assert
+        assertThat(resultado.getResponse().getRedirectedUrl()).isEqualTo("/login?desativado");
     }
 }

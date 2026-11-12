@@ -1,8 +1,10 @@
 package io.github.lucasolimpio.conformia.shared.security;
 
+import io.github.lucasolimpio.conformia.usuario.service.UsuarioService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.CredentialsExpiredException;
@@ -26,14 +28,20 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 @EnableWebSecurity
 public class SecurityConfig {
 
+    /** Perfis que cadastram e alteram registros. AUDITOR é somente leitura. */
+    private static final String[] EDITORES = {"GERENTE", "ANALISTA"};
+
     @Bean
     @Order(1)
-    public SecurityFilterChain api(HttpSecurity http) throws Exception {
+    public SecurityFilterChain api(HttpSecurity http, UsuarioService usuarioService) throws Exception {
         http
                 .securityMatcher("/api/**")
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/usuarios/**").hasRole("GERENTE")
+                        // inventário: todos leem; Auditor não altera
+                        .requestMatchers(HttpMethod.GET, "/api/ativos/**").authenticated()
+                        .requestMatchers("/api/ativos/**").hasAnyRole(EDITORES)
                         .anyRequest().authenticated())
                 // CSRF desligado só na API: o ataque depende do navegador enviar o cookie
                 // de outro site. Aqui o cookie é SameSite=Lax (não vai em POST de outro site),
@@ -47,17 +55,22 @@ public class SecurityConfig {
                 .logout(logout -> logout
                         .logoutUrl("/api/auth/logout")
                         .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
+                .addFilterBefore(new UsuarioAtivoFilter(usuarioService), AuthorizationFilter.class)
                 .addFilterAfter(new TrocaSenhaObrigatoriaFilter(), AuthorizationFilter.class);
         return http.build();
     }
 
     @Bean
     @Order(2)
-    public SecurityFilterChain web(HttpSecurity http, LoginSucessoHandler loginSucesso) throws Exception {
+    public SecurityFilterChain web(HttpSecurity http, LoginSucessoHandler loginSucesso,
+                                   UsuarioService usuarioService) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/css/**", "/js/**", "/error").permitAll()
                         .requestMatchers("/usuarios/**").hasRole("GERENTE")
+                        // inventário: lista para todos; formulários e alterações só para editores
+                        .requestMatchers(HttpMethod.GET, "/inventario").authenticated()
+                        .requestMatchers("/inventario/**").hasAnyRole(EDITORES)
                         .anyRequest().authenticated())
                 .formLogin(form -> form
                         .loginPage("/login")
@@ -73,6 +86,7 @@ public class SecurityConfig {
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login?saiu")
                         .permitAll())
+                .addFilterBefore(new UsuarioAtivoFilter(usuarioService), AuthorizationFilter.class)
                 .addFilterAfter(new TrocaSenhaObrigatoriaFilter(), AuthorizationFilter.class);
         return http.build();
     }

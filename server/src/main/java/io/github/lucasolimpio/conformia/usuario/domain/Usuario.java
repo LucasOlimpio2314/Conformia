@@ -78,6 +78,17 @@ public class Usuario {
         this.senhaExpiraEm = null;
     }
 
+    /** Correção de nome/e-mail pelo Gerente. O e-mail já chega normalizado e conferido pelo service. */
+    public void atualizarDados(String nome, String email) {
+        this.nome = nome;
+        this.email = email;
+    }
+
+    /** Desativado não entra (login recusado) e perde a sessão aberta na próxima requisição. */
+    public void definirAtivo(boolean ativo) {
+        this.ativo = ativo;
+    }
+
     public void registrarAcesso(Instant quando) {
         this.ultimoAcesso = quando;
     }

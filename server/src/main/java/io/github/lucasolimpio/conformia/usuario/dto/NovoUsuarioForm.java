@@ -24,8 +24,17 @@ public record NovoUsuarioForm(
         @NotNull(message = "Escolha um perfil.")
         Perfil perfil,
 
-        boolean ativo
+        /** Boolean: o Jackson 3 recusaria o JSON inteiro se um boolean primitivo faltasse. */
+        Boolean ativo
 ) {
+
+    /**
+     * Ausente no JSON da API = ativo (o normal ao criar alguém).
+     * Na web o checkbox sempre manda valor: marcado = true, desmarcado = false (marcador "_ativo").
+     */
+    public NovoUsuarioForm {
+        ativo = ativo == null || ativo;
+    }
 
     /** Valores iniciais do formulário vazio. */
     public static NovoUsuarioForm vazio() {

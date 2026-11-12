@@ -86,7 +86,9 @@
   async function abrirDrawer(url, origem) {
     origemFoco = origem;
     const resp = await fetch(url, { headers: { "X-Requested-With": "fetch" } });
+    if (!resp.ok) { toast(await resp.text() || "Não foi possível abrir o formulário."); return; }
     drawer.innerHTML = await resp.text();
+    prepararFormAtivo();
     drawer.classList.add("open");
     scrim.classList.add("open");
     drawer.setAttribute("aria-hidden", "false");
@@ -100,13 +102,19 @@
   }
 
   if (drawer) {
-    $$("[data-drawer-url]").forEach(b => b.addEventListener("click", () => abrirDrawer(b.dataset.drawerUrl, b)));
+    // delegação: botões "Editar" de cada linha também abrem o drawer
+    document.addEventListener("click", e => {
+      const b = e.target.closest("[data-drawer-url]");
+      if (b) abrirDrawer(b.dataset.drawerUrl, b);
+    });
     scrim.addEventListener("click", fecharDrawer);
     drawer.addEventListener("click", e => { if (e.target.closest("[data-drawer-fechar]")) fecharDrawer(); });
+    drawer.addEventListener("change", prepararFormAtivo);
 
-    // envio do formulário: 422 = volta o form com erros; 200 = senha temporária gerada
+    // envio do formulário:
+    // 422 = volta o form com erros; X-Redirect = salvou, recarrega; 200 = senha temporária (usuários)
     drawer.addEventListener("submit", async e => {
-      const form = e.target.closest("[data-form-usuario]");
+      const form = e.target.closest("[data-form-drawer]");
       if (!form) return;
       e.preventDefault();
       const botao = $("button[type=submit]", form);
@@ -116,16 +124,95 @@
         const html = await resp.text();
         if (resp.status === 422) {
           drawer.innerHTML = html;
-          const erro = $(".invalid input, .alert", drawer);
+          prepararFormAtivo();
+          const erro = $(".invalid input, .invalid select, .alert", drawer);
           if (erro) erro.focus?.();
           return;
         }
         if (!resp.ok) { toast(html || "Não foi possível salvar. Tente de novo."); return; }
+        const destino = resp.headers.get("X-Redirect");
+        if (destino) { location.href = destino; return; }
         fecharDrawer();
         mostrarSenha(html);
       } finally {
         botao.disabled = false;
       }
+    });
+  }
+
+  // ---------- inventário: comportamento do formulário do ativo ----------
+  const ROTULO_CRITICIDADE = { 1: "Muito baixa", 2: "Baixa", 3: "Média", 4: "Alta", 5: "Muito alta" };
+  function prepararFormAtivo() {
+    const form = drawer && $("[data-form-ativo]", drawer);
+    if (!form) return;
+    // fornecedor só aparece (e só é exigido no servidor) se for terceirizado
+    const terc = $("[data-terceirizado]", form);
+    $("[data-campo-fornecedor]", form).hidden = !terc.checked;
+    // criticidade = maior nota entre C, I e D
+    const nota = n => +($(`input[name="${n}"]:checked`, form)?.value || 0);
+    const k = Math.max(nota("confidencialidade"), nota("integridade"), nota("disponibilidade"));
+    $("[data-criticidade-calc]", form).textContent = k ? `${k} · ${ROTULO_CRITICIDADE[k]}` : "—";
+    // explica a classificação escolhida
+    const cls = $('input[name="classificacao"]:checked', form);
+    $("[data-classificacao-hint]", form).textContent = cls ? cls.closest("label").dataset.descricao : "";
+  }
+
+  // ---------- inventário: filtros da lista ----------
+  const tabelaAtivos = $("#tabela-ativos");
+  if (tabelaAtivos) {
+    let tipo = "";
+    const filtrar = () => {
+      const q = $("#busca").value.trim().toLowerCase();
+      const cls = $("#filtro-classificacao").value, sit = $("#filtro-situacao-ativo").value;
+      const linhas = $$("tbody tr[data-tipo]", tabelaAtivos);
+      let visiveis = 0;
+      linhas.forEach(tr => {
+        const ok = (!tipo || tr.dataset.tipo === tipo) && (!cls || tr.dataset.classificacao === cls)
+          && (!sit || tr.dataset.situacao === sit) && (!q || tr.dataset.busca.includes(q));
+        tr.hidden = !ok;
+        if (ok) visiveis++;
+      });
+      $("#sem-resultado").hidden = visiveis > 0;
+      $("#contador").textContent = `${visiveis} ativos exibidos`;
+    };
+    $$("[data-filtro-tipo]").forEach(c => c.addEventListener("click", () => {
+      tipo = c.dataset.filtroTipo;
+      $$("[data-filtro-tipo]").forEach(x => x.setAttribute("aria-pressed", x === c));
+      filtrar();
+    }));
+    $("#busca").addEventListener("input", filtrar);
+    $("#filtro-classificacao").addEventListener("change", filtrar);
+    $("#filtro-situacao-ativo").addEventListener("change", filtrar);
+    filtrar(); // começa mostrando só os ativos em uso
+  }
+
+  // ---------- inventário: modal de descontinuar ----------
+  const modalDesc = $("#modal-descontinuar");
+  if (modalDesc) {
+    const form = $("form", modalDesc);
+    let url = null;
+    const fechar = () => { modalDesc.hidden = true; };
+    document.addEventListener("click", e => {
+      const b = e.target.closest("[data-descontinuar-url]");
+      if (b) {
+        url = b.dataset.descontinuarUrl;
+        $("#desc-codigo").textContent = b.dataset.descontinuarCodigo;
+        form.reset();
+        $("#f-justificativa").classList.remove("invalid");
+        $("#justificativa-erro").textContent = "";
+        modalDesc.hidden = false;
+        $("#justificativa").focus();
+      }
+      if (e.target.closest("[data-fechar-descontinuar]")) fechar();
+    });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && !modalDesc.hidden) fechar(); });
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const resp = await postar(url, new FormData(form));
+      const destino = resp.headers.get("X-Redirect");
+      if (resp.ok && destino) { location.href = destino; return; }
+      $("#f-justificativa").classList.add("invalid");
+      $("#justificativa-erro").textContent = await resp.text();
     });
   }
 

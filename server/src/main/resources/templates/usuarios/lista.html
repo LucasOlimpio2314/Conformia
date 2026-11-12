@@ -58,12 +58,12 @@
                         <td class="mono" th:text="${u.ultimoAcesso() != null} ? ${#temporals.format(u.ultimoAcesso(), 'dd/MM/yyyy HH:mm')} : '—'">—</td>
                         <td class="mono" th:text="${#temporals.format(u.criadoEm(), 'dd/MM/yyyy')}">06/11/2026</td>
                         <td>
-                            <div class="row-acts" th:if="${u.id() != eu.id}">
+                            <div class="row-acts">
                                 <button class="row-act" type="button"
+                                        th:attr="data-drawer-url=@{/usuarios/{id}/form(id=${u.id()})}">Editar</button>
+                                <button class="row-act" type="button" th:if="${u.id() != eu.id}"
                                         th:attr="data-reset-url=@{/usuarios/{id}/redefinir-senha(id=${u.id()})},data-reset-nome=${u.nome()}">Redefinir senha</button>
-                            </div>
-                            <div class="row-acts" th:if="${u.id() == eu.id}">
-                                <a class="row-act" th:href="@{/minha-conta}" style="text-decoration:none">Minha conta</a>
+                                <a class="row-act" th:href="@{/minha-conta}" th:if="${u.id() == eu.id}" style="text-decoration:none">Minha conta</a>
                             </div>
                         </td>
                     </tr>

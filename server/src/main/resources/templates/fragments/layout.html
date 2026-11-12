@@ -24,10 +24,11 @@
 
     <nav class="nav" aria-label="Riskdesk">
         <div class="nav-label">Riskdesk</div>
-        <a href="#" class="soon" aria-disabled="true">Riscos <small>em breve</small></a>
+        <a th:href="@{/inventario}" th:classappend="${ativo == 'inventario'} ? 'active'"
+           th:attr="aria-current=${ativo == 'inventario'} ? 'page'">Inventário de ativos</a>
+        <a href="#" class="soon" aria-disabled="true">Riscos <small>próximo</small></a>
         <a href="#" class="soon" aria-disabled="true">Aceites formais <small>em breve</small></a>
         <a href="#" class="soon" aria-disabled="true">Plano de ação <small>em breve</small></a>
-        <a href="#" class="soon" aria-disabled="true">Inventário de ativos <small>em breve</small></a>
         <a href="#" class="soon" aria-disabled="true">Controles do Anexo A <small>em breve</small></a>
     </nav>
 
@@ -47,6 +48,9 @@
         </form>
     </div>
 </aside>
+
+<!-- Resposta vazia para fetch bem-sucedido: o cabeçalho X-Redirect diz para onde ir -->
+<span th:fragment="vazio" hidden></span>
 
 <!-- Aviso rápido no rodapé; mensagens de redirect chegam via flash attribute "toast" -->
 <div th:fragment="toast" class="toast" id="toast" role="status" aria-live="polite"

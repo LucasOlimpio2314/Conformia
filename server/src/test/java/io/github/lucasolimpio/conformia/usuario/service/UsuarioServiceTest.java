@@ -3,6 +3,7 @@ package io.github.lucasolimpio.conformia.usuario.service;
 import io.github.lucasolimpio.conformia.shared.exception.RegraNegocioException;
 import io.github.lucasolimpio.conformia.usuario.domain.Perfil;
 import io.github.lucasolimpio.conformia.usuario.domain.Usuario;
+import io.github.lucasolimpio.conformia.usuario.dto.EdicaoUsuarioForm;
 import io.github.lucasolimpio.conformia.usuario.dto.NovoUsuarioForm;
 import io.github.lucasolimpio.conformia.usuario.dto.SenhaTemporariaGerada;
 import io.github.lucasolimpio.conformia.usuario.dto.TrocaSenhaForm;
@@ -308,5 +309,100 @@ class UsuarioServiceTest {
                 .isInstanceOf(RegraNegocioException.class)
                 .hasMessage("Senha atual incorreta.")
                 .extracting("campo").isEqualTo("senhaAtual");
+    }
+    // ---------- editar (gerente) ----------
+
+    @Test
+    void deveEditarNomeEEmailGuardandoEmailEmMinusculas() {
+        // Arrange
+        EdicaoUsuarioForm form = new EdicaoUsuarioForm(" Rafael Nunes Silva ", " Rafael.Silva@Empresa.com ", true);
+
+        // Act
+        service.editar(ANALISTA_ID, form, GERENTE_ID);
+
+        // Assert
+        assertThat(analista.getNome()).isEqualTo("Rafael Nunes Silva");
+        assertThat(analista.getEmail()).isEqualTo("rafael.silva@empresa.com");
+    }
+
+    @Test
+    void deveRecusarEmailQueJaPertenceAOutroUsuario() {
+        // Arrange
+        when(repository.existsByEmailAndIdNot("ana@empresa.com", ANALISTA_ID)).thenReturn(true);
+        EdicaoUsuarioForm form = new EdicaoUsuarioForm("Rafael Nunes", "ana@empresa.com", true);
+
+        // Act
+        Throwable erro = catchThrowable(() -> service.editar(ANALISTA_ID, form, GERENTE_ID));
+
+        // Assert
+        assertThat(erro).isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Já existe outro usuário com este e-mail.")
+                .extracting("campo").isEqualTo("email");
+    }
+
+    @Test
+    void deveDesativarOutroUsuario() {
+        // Arrange
+        EdicaoUsuarioForm form = new EdicaoUsuarioForm("Rafael Nunes", "rafael@empresa.com", false);
+
+        // Act
+        service.editar(ANALISTA_ID, form, GERENTE_ID);
+
+        // Assert
+        assertThat(analista.isAtivo()).isFalse();
+    }
+
+    @Test
+    void deveReativarUsuarioDesativado() {
+        // Arrange
+        analista.definirAtivo(false);
+        EdicaoUsuarioForm form = new EdicaoUsuarioForm("Rafael Nunes", "rafael@empresa.com", true);
+
+        // Act
+        service.editar(ANALISTA_ID, form, GERENTE_ID);
+
+        // Assert
+        assertThat(analista.isAtivo()).isTrue();
+    }
+
+    @Test
+    void deveImpedirGerenteDeDesativarOProprioAcesso() {
+        // Arrange
+        EdicaoUsuarioForm form = new EdicaoUsuarioForm("Ana Gerente", "ana@empresa.com", false);
+
+        // Act
+        Throwable erro = catchThrowable(() -> service.editar(GERENTE_ID, form, GERENTE_ID));
+
+        // Assert
+        assertThat(erro).isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Você não pode desativar o seu próprio acesso.");
+        assertThat(gerente.isAtivo()).isTrue();
+    }
+
+    @Test
+    void deveImpedirAnalistaDeEditarUsuario() {
+        // Arrange
+        EdicaoUsuarioForm form = new EdicaoUsuarioForm("Ana", "ana@empresa.com", false);
+
+        // Act
+        Throwable erro = catchThrowable(() -> service.editar(GERENTE_ID, form, ANALISTA_ID));
+
+        // Assert
+        assertThat(erro).isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Só um Gerente pode gerenciar usuários.");
+    }
+
+    @Test
+    void deveCriarUsuarioAtivoQuandoCampoAtivoNaoForInformado() {
+        // Arrange — JSON da API sem "ativo"
+        NovoUsuarioForm form = new NovoUsuarioForm("Juliana Prado", "juliana@empresa.com", Perfil.ANALISTA, null);
+
+        // Act
+        service.criar(form, GERENTE_ID);
+
+        // Assert
+        ArgumentCaptor<Usuario> salvo = ArgumentCaptor.forClass(Usuario.class);
+        verify(repository).save(salvo.capture());
+        assertThat(salvo.getValue().isAtivo()).isTrue();
     }
 }

@@ -6,10 +6,29 @@
 
 | | |
 |---|---|
-| Fase | Módulo **usuário** (web + API mobile) implementado na branch `feature/backend-usuario` (aguardando revisão/commit do Lucas) |
-| Próximo passo | Lucas testar e commitar → PR. Depois: editar usuário (nome, perfil, ativar/desativar); responsável do mobile começa pelo login usando `docs/api/usuarios.md` |
+| Fase | Módulo **inventário de ativos** (web + API) implementado na branch `feature/backend-inventario` (criada a partir da `feature/backend-usuario`), aguardando commit do Lucas |
+| Próximo passo | Lucas commitar o inventário (`C:\Faculdade\commit-modulo-inventario.bat`) e abrir PR. Depois: **cadastro de risco** (matriz 5×5, ativo escolhido do inventário, impacto sugerido pela criticidade C-I-D) |
 
 ## Histórico
+
+### 2026-11-11 — E2E no Chrome + edição/ativação de usuários
+- E2E manual no Chrome (localhost:8080) cobrindo login, senha temporária, troca obrigatória (web e API), bloqueios por perfil, inventário (cadastro, erro de fornecedor, edição, descontinuar), Minha conta e tentativas do Auditor de alterar pela URL/API. Dados de teste no banco de desenvolvimento: usuários "E2E Analista" (desativado) e "E2E Auditor", ativo ATV-002 (descontinuado).
+- **Bug encontrado**: a chave (switch) aparecia desligada mesmo marcada — o `th:field` põe um `<input hidden name="_campo">` entre o checkbox e o `<i>`, e o CSS usava `+`. Corrigido para `~`. Era o motivo do usuário "Lucas" ter sido criado inativo.
+- Novo: Gerente **edita nome/e-mail** e **ativa/desativa** usuário (drawer "Editar" + `PUT /api/usuarios/{id}`). Regras: não pode desativar a si mesmo; e-mail não repete; editar a própria conta recarrega a sessão (`SessaoUsuario`) para o menu mostrar o nome novo.
+- Novo: `UsuarioAtivoFilter` — desativado perde a sessão aberta na próxima requisição (web → `/login?desativado`, API → `401 USUARIO_INATIVO`).
+- Corrigido: `POST /api/usuarios` sem `ativo` (agora omitido = ativo).
+- Testes: 54 unitários + 50 integração, `mvnw verify` verde.
+
+### 2026-11-11 — Inventário de ativos
+- Usuário commitado (`575bb82`) e enviado; PR `feature/backend-usuario` → `main` aberto pelo Lucas. Inventário em `feature/backend-inventario`, criada em cima dela (merge do PR do usuário com "merge commit", não squash).
+- Protótipo aprovado (artifact "Conformia Inventário — protótipo"), sem coluna C-I-D na lista (só criticidade, notas no tooltip).
+- `V2__cria_ativo.sql`: tabela `ativo` + sequência `ativo_codigo_seq` (código `ATV-001`...), FKs para `usuario` (proprietário, criado_por, atualizado_por), CHECKs de tipo/classificação/notas/fornecedor/justificativa.
+- Regras (`AtivoService`): Gerente e Analista alteram, Auditor só lê; proprietário = Gerente/Analista **ativo** (Auditor nunca); terceirizado exige fornecedor (proprietário continua interno, A.5.23); nada é apagado → **descontinuar** com justificativa (10–500); descontinuado não é editável; criticidade = maior nota C-I-D.
+- Proprietário desativado: o ativo mantém o dono, a lista mostra "Proprietário inativo" e a edição obriga escolher outro.
+- Web `/inventario` (lista + drawer + modal de descontinuar) e API `/api/ativos`. "/" agora abre o inventário para todos os perfis.
+- Contrato para o Flutter em `docs/api/inventario.md`.
+- Testes: + `AtivoServiceTest` (16), `AtivoTest` (4), `InventarioWebIT` (9), `AtivoApiIT` (8). Total: 47 unitários + 41 integração, `mvnw verify` verde.
+- Aprendizados técnicos: Thymeleaf 3.1 proíbe `${param...}` em `th:attr` (montar no controller); Jackson 3 recusa JSON sem campo `boolean` primitivo (usar `Boolean` + construtor compacto do record).
 
 ### 2026-11-11 — API do mobile (auth e usuários)
 - Login da API **por sessão** (cookie `JSESSIONID`), sem JWT. Segunda `SecurityFilterChain` só para `/api/**`: respostas 401/403 em JSON, CSRF desligado (cookie `SameSite=Lax` + só JSON + sem CORS).
@@ -58,6 +77,12 @@
 | 2026-11-11 | Senha temporária gerada pelo sistema, válida 24h, troca obrigatória no 1º login | Gerente nunca escolhe a senha de outra pessoa; senha perdida = nova temporária |
 | 2026-11-11 | `/usuarios` só GERENTE; "Minha conta" para todos; só gerente gera temporária e nunca para si mesmo | Própria senha se troca confirmando a atual |
 | 2026-11-11 | "Manter conectado" removido; sessão expira em 30 min | Menos superfície de ataque e menos segredo no `.env` |
+| 2026-11-11 | Gerente edita nome/e-mail e ativa/desativa usuários; não pode se desativar; desativado perde a sessão na hora | Pedido do Lucas após o E2E; evita sistema sem gerente e acesso "fantasma" |
+| 2026-11-11 | Inventário antes do risco; risco escolhe o ativo do inventário | Risco sempre ligado a um ativo real, sem texto solto |
+| 2026-11-11 | Matriz de risco 5×5 (níveis: Baixo 1–4, Médio 5–9, Alto 10–16, Crítico 17–25) | Mais usada em ISO 27001; mesma escala 1–5 da criticidade C-I-D |
+| 2026-11-11 | Riscos e ativos: Gerente e Analista alteram, Auditor só lê, nada é excluído (encerrar/descontinuar com justificativa) | Histórico preservado para auditoria |
+| 2026-11-11 | Proprietário do ativo = usuário Gerente/Analista ativo; ativo pode ser terceirizado (fornecedor), mas o dono é interno | Responsabilidade não sai da empresa (A.5.9, A.5.23) |
+| 2026-11-11 | Classificação em 4 níveis + C-I-D de 1 a 5 por ativo | Esquema mais comum; criticidade sugere o impacto do risco |
 | 2026-11-11 | API mobile autenticada por sessão (cookie), igual à web — sem JWT | Reaproveita o login existente; logout/bloqueio imediatos; menos conceitos para o grupo |
 | 2026-11-05 | Testes no padrão AAA + nome de método por comportamento + AssertJ | Mais simples para o grupo aprender; o nome já dá a leitura de negócio. Migrar para Given-When-Then só se os testes virarem documentação para não-devs |
 | 2026-11-05 | Repositório privado, sem licença por enquanto | Evitar exposição acidental; possível venda futura |
@@ -71,4 +96,7 @@
 - [ ] Grupo definir versão do Flutter SDK; responsável do mobile cria `mobile/`.
 - [ ] Cada colega precisa adicionar `ADMIN_NOME`, `ADMIN_EMAIL`, `ADMIN_SENHA` no próprio `server/.env` (ver `.env.example`).
 - [ ] Mobile: guardar o cookie `JSESSIONID` no Flutter (pacote de cookies) — ver `docs/api/usuarios.md`.
-- [ ] Editar usuário (nome, perfil, ativar/desativar) — botão "Editar" ainda não existe.
+- [x] Editar usuário (nome, e-mail, ativar/desativar).
+- [ ] Decidir se o Gerente pode **mudar o perfil** de um usuário (hoje não pode).
+- [x] `POST /api/usuarios` sem o campo `ativo` (corrigido).
+- [ ] Merge do PR `feature/backend-usuario` → `main` (usar "Create a merge commit").

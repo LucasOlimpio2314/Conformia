@@ -1,6 +1,7 @@
 package io.github.lucasolimpio.conformia.usuario.api;
 
 import io.github.lucasolimpio.conformia.shared.security.UsuarioLogado;
+import io.github.lucasolimpio.conformia.usuario.dto.EdicaoUsuarioForm;
 import io.github.lucasolimpio.conformia.usuario.dto.NovoUsuarioForm;
 import io.github.lucasolimpio.conformia.usuario.dto.SenhaTemporariaGerada;
 import io.github.lucasolimpio.conformia.usuario.dto.UsuarioResposta;
@@ -11,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -43,6 +45,13 @@ public class UsuarioApiController {
     public SenhaTemporariaGerada criar(@Valid @RequestBody NovoUsuarioForm form,
                                        @AuthenticationPrincipal UsuarioLogado eu) {
         return usuarioService.criar(form, eu.getId());
+    }
+
+    /** Body: {"nome", "email", "ativo"} — ativo obrigatório (não desativa ninguém por omissão). */
+    @PutMapping("/{id}")
+    public UsuarioResposta editar(@PathVariable Long id, @Valid @RequestBody EdicaoUsuarioForm form,
+                                  @AuthenticationPrincipal UsuarioLogado eu) {
+        return UsuarioResposta.de(usuarioService.editar(id, form, eu.getId()));
     }
 
     @PostMapping("/{id}/redefinir-senha")

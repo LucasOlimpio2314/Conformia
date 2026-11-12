@@ -24,7 +24,8 @@ Não é preciso token CSRF na API.
 | GET | `/api/minha-conta` | logado | — | 200 `UsuarioResposta` |
 | PUT | `/api/minha-conta/senha` | logado | `{"senhaAtual","novaSenha","confirmacao"}` | 204 |
 | GET | `/api/usuarios` | GERENTE | — | 200 `[UsuarioResposta]` |
-| POST | `/api/usuarios` | GERENTE | `{"nome","email","perfil","ativo"}` | 201 `SenhaTemporariaGerada` |
+| POST | `/api/usuarios` | GERENTE | `{"nome","email","perfil","ativo"}` (`ativo` omitido = true) | 201 `SenhaTemporariaGerada` |
+| PUT | `/api/usuarios/{id}` | GERENTE | `{"nome","email","ativo"}` (`ativo` obrigatório; não pode se desativar) | 200 `UsuarioResposta` |
 | POST | `/api/usuarios/{id}/redefinir-senha` | GERENTE (não para si) | — | 200 `SenhaTemporariaGerada` |
 
 `perfil`: `GERENTE`, `ANALISTA` ou `AUDITOR`.
@@ -56,6 +57,7 @@ Sempre `{"codigo", "mensagem", "campo"?, "campos"?}`. A `mensagem` já vem pront
 | 401 | `CREDENCIAIS_INVALIDAS` | Login: e-mail ou senha incorretos (ou usuário inativo) |
 | 401 | `SENHA_EXPIRADA` | Login: senha temporária passou das 24 h |
 | 401 | `NAO_AUTENTICADO` | Sem sessão ou sessão expirada |
+| 401 | `USUARIO_INATIVO` | O usuário foi desativado por um Gerente: a sessão foi encerrada na hora |
 | 403 | `ACESSO_NEGADO` | Perfil sem permissão (ex.: analista em `/api/usuarios`) |
 | 403 | `TROCA_SENHA_OBRIGATORIA` | Precisa trocar a senha temporária antes |
 | 422 | `REGRA_NEGOCIO` | Regra violada (ex.: e-mail repetido) — `campo` indica qual |
